@@ -21,7 +21,7 @@ import warnings
 
 import sys
 
-sys.path.append('/home/lab929/wzm/FYP/AGAPG')
+sys.path.append('/home/cgv841/wzm/FYP/AGAPG')
 
 from aerial_gym.utils.q_funcs import (
     q_dot_q,

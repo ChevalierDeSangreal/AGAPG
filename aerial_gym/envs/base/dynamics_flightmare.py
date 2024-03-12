@@ -12,7 +12,7 @@ class FlightmareDynamics(Dynamics):
 
     def __init__(self, modified_params={}, simulate_rotors=False):
         super().__init__(modified_params=modified_params)
-
+        torch.cuda.set_device(self.device)
         self.simulate_rotors = simulate_rotors
 
         # new parameters needed for flightmare simulation

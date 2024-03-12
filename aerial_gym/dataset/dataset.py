@@ -22,7 +22,7 @@ def full_state_training_data(
 	index = 0
 	while counter < len_data:
 		traj = load_prepare_trajectory(
-			"/home/lab929/wzm/FYP/AGAPG/aerial_gym/data/traj_data_1", dt, speed_factor, index
+			"/home/cgv841/wzm/FYP/AGAPG/aerial_gym/data/traj_data_1", dt, speed_factor, index
 		)[:, :ref_size]
 		traj_cut = traj[:-(ref_length + 1)]
 		# traj_cut = traj

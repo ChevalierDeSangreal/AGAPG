@@ -14,7 +14,7 @@ from torch.distributions.normal import Normal
 from torch.utils.tensorboard import SummaryWriter
 import sys
 
-sys.path.append('/home/lab929/wzm/FYP/AGAPG')
+sys.path.append('/home/cgv841/wzm/FYP/AGAPG')
 # print(sys.path)
 from aerial_gym.envs import *
 from aerial_gym.utils import task_registry

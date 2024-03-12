@@ -55,8 +55,8 @@ class TrackGroundCfg(BaseConfig):
         density = 0.001
         angular_damping = 0.
         linear_damping = 0.
-        max_angular_velocity = 100.
-        max_linear_velocity = 100.
+        max_angular_velocity = 10.
+        max_linear_velocity = 10.
         armature = 0.001
 
     class tar_asset:
@@ -75,8 +75,8 @@ class TrackGroundCfg(BaseConfig):
         density = 0.001
         angular_damping = 0.
         linear_damping = 0.
-        max_angular_velocity = 100.
-        max_linear_velocity = 100.
+        max_angular_velocity = 10.
+        max_linear_velocity = 10.
         armature = 0.001
 
     # viewer camera:
@@ -105,4 +105,4 @@ class TrackGroundCfg(BaseConfig):
             contact_collection = 0 # 0: never, 1: last sub-step, 2: all sub-steps (default=2)
 
     class other:
-        param_file_path = '/home/lab929/wzm/FYP/AGAPG/aerial_gym/envs/base/param_file.pth'
+        param_file_path = '/home/cgv841/wzm/FYP/AGAPG/aerial_gym/envs/base/param_file.pth'

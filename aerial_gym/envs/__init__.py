@@ -7,6 +7,7 @@
 from aerial_gym.envs.base.aerial_robot_config import AerialRobotCfg
 from .base.dynamics_trainer import DynamicsTrainer
 from .base.track_ground import TrackGround
+from .base.track_ground_test import TrackGroundTest
 from .base.track_simple import TrackSimple
 from .base.track_simple_config import TrackSimpleCfg
 from .base.track_ground_config import TrackGroundCfg
@@ -19,3 +20,4 @@ from aerial_gym.utils.task_registry import task_registry
 task_registry.register( "train_dynamics", DynamicsTrainer, AerialRobotCfg())
 task_registry.register( "track_simple", TrackSimple, TrackSimpleCfg())
 task_registry.register( "track_ground", TrackGround, TrackGroundCfg())
+task_registry.register( "track_ground_test", TrackGroundTest, TrackGroundCfg())

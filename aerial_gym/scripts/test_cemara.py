@@ -8,7 +8,7 @@ import numpy as np
 import torch
 import sys
 
-sys.path.append('/home/lab929/wzm/FYP/AGAPG')
+sys.path.append('/home/cgv841/wzm/FYP/AGAPG')
 # print(sys.path)
 from aerial_gym.envs import *
 from aerial_gym.utils import task_registry
@@ -19,20 +19,20 @@ def get_args():
         {"name": "--experiment_name", "type": str, "default": os.path.basename(__file__).rstrip(".py"), "help": "Name of the experiment to run or load."},
         {"name": "--headless", "action": "store_true", "default": True, "help": "Force display off at all times"},
         {"name": "--horovod", "action": "store_true", "default": False, "help": "Use horovod for multi-gpu training"},
-        {"name": "--rl_device", "type": str, "default": "cuda:0", "help": 'Device used by the RL algorithm, (cpu, gpu, cuda:0, cuda:1 etc..)'},
-        {"name": "--num_envs", "type": int, "default": 2, "help": "Number of environments to create. Batch size will be equal to this"},
+        {"name": "--rl_device", "type": str, "default": "", "help": 'Device used by the RL algorithm, (cpu, gpu, cuda:0, cuda:1 etc..)'},
+        {"name": "--num_envs", "type": int, "default": 20, "help": "Number of environments to create. Batch size will be equal to this"},
         {"name": "--seed", "type": int, "default": 42, "help": "Random seed. Overrides config file if provided."},
 
         # train setting
         {"name": "--learning_rate", "type":float, "default": 0.1,
             "help": "the learning rate of the optimizer"},
-        {"name": "--batch_size", "type":int, "default": 2,
+        {"name": "--batch_size", "type":int, "default": 20,
             "help": "batch size of training. Notice that batch_size should be equal to num_envs"},
         {"name": "--num_worker", "type":int, "default": 4,
             "help": "num worker of dataloader"},
         {"name": "--num_epoch", "type":int, "default": 1000,
             "help": "num of epoch"},
-        {"name": "--len_sample", "type":int, "default": 1,
+        {"name": "--len_sample", "type":int, "default": 10,
             "help": "length of a sample"},
 
         
@@ -82,11 +82,14 @@ if __name__ == "__main__":
         # optimizer.step()
         new_state_sim = envs.step(action)
         # 
-        if not step:
+        if step == 0:
+            tmp = envs.get_camera_dep_output()
+            print(torch.sum(tmp, dim=(1, 2)))
             x = envs.save_camera_output()
+            # print(x)
             is_all_zero = np.all(x == 0)
             print(is_all_zero)
-    
+    envs.reset()
     print("Testing Complete!")
             
 

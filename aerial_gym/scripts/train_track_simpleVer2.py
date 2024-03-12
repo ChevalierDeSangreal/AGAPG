@@ -15,7 +15,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader
 import sys
 
-sys.path.append('/home/lab929/wzm/FYP/AGAPG')
+sys.path.append('/home/cgv841/wzm/FYP/AGAPG')
 # print(sys.path)
 from aerial_gym.envs import *
 from aerial_gym.utils import task_registry
@@ -46,11 +46,11 @@ def get_args():
             "help": "length of a sample"},
 
         # model setting
-        {"name": "--param_path_dynamic", "type":str, "default": '/home/lab929/wzm/FYP/AGAPG/aerial_gym/param_saved/dynamic_learntVer2.pth',
+        {"name": "--param_path_dynamic", "type":str, "default": '/home/cgv841/wzm/FYP/AGAPG/aerial_gym/param_saved/dynamic_learntVer2.pth',
             "help": "The path to dynamic model parameters"},
-        {"name": "--param_save_path_track_simple", "type":str, "default": '/home/lab929/wzm/FYP/AGAPG/aerial_gym/param_saved/track_simpleVer3.pth',
+        {"name": "--param_save_path_track_simple", "type":str, "default": '/home/cgv841/wzm/FYP/AGAPG/aerial_gym/param_saved/track_simpleVer3.pth',
             "help": "The path to model parameters"},
-        {"name": "--param_load_path_track_simple", "type":str, "default": '/home/lab929/wzm/FYP/AGAPG/aerial_gym/param_saved/track_simpleVer2.pth',
+        {"name": "--param_load_path_track_simple", "type":str, "default": '/home/cgv841/wzm/FYP/AGAPG/aerial_gym/param_saved/track_simpleVer2.pth',
             "help": "The path to model parameters"},
         
         ]

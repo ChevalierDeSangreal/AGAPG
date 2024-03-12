@@ -6,6 +6,7 @@
 
 import numpy as np
 import os
+# os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 import torch
 from pytorch3d.transforms import quaternion_to_matrix, matrix_to_euler_angles
 
@@ -34,8 +35,11 @@ class TrackGround(BaseTask):
         self.physics_engine = physics_engine
         self.sim_device_id = sim_device
         self.headless = headless
+        
 
         super().__init__(self.cfg, sim_params, physics_engine, sim_device, headless)
+        # print("FFFFFFFFFFFUCKKKKKKKKKKKKKKKKKK YOUUUUUUUUUUUUU, ", self.sim_device_id, self.device)
+        self.tar_obs_buf = torch.zeros(self.num_envs, self.num_obs, device=self.device, dtype=torch.float)
         self.root_tensor = self.gym.acquire_actor_root_state_tensor(self.sim)
 
         bodies_per_env = self.robot_num_bodies + self.tar_num_bodies
@@ -90,6 +94,8 @@ class TrackGround(BaseTask):
             cam_ref_env = self.cfg.viewer.ref_env
             
             self.gym.viewer_camera_look_at(self.viewer, None, cam_pos, cam_target)
+        
+        
 
 
     def create_sim(self):
@@ -128,9 +134,9 @@ class TrackGround(BaseTask):
 
         self.robot_num_bodies = self.gym.get_asset_rigid_body_count(robot_asset)
         self.tar_num_bodies = self.gym.get_asset_rigid_body_count(tar_asset)
-        print("asset_file = ", asset_file)
-        print("asset_root = ", asset_root)
-        print("robot_num_bodies = ", self.robot_num_bodies)
+        # print("asset_file = ", asset_file)
+        # print("asset_root = ", asset_root)
+        # print("robot_num_bodies = ", self.robot_num_bodies)
 
         start_pose = gymapi.Transform()
         self.env_spacing = self.cfg.env.env_spacing
@@ -141,6 +147,11 @@ class TrackGround(BaseTask):
         self.actor_handles = []
         self.camera_handles = []
         self.envs = []
+        self.camera_root_tensors = []
+        self.camera_dep_root_tensors = []
+        self.tar_seg_ids = []
+        tar_seg_id_count = 114
+
         for i in range(self.num_envs):
             # create env instance
             env_handle = self.gym.create_env(
@@ -154,21 +165,34 @@ class TrackGround(BaseTask):
             self.robot_body_index = self.gym.get_actor_rigid_body_index(env_handle, actor_handle, 0, gymapi.IndexDomain.DOMAIN_ENV)
             self.robot_body_handle = self.gym.get_actor_rigid_body_handle(env_handle, actor_handle, 0)
 
-            print(f"In env {i}, robot_actor_index = {self.robot_actor_index}, robot_body_intex = {self.robot_body_index}, robot_body_handle = {self.robot_body_handle}")
-            print(f"robot_actor_handle = {actor_handle}")
-            print("env_handle = ", env_handle)
+            # print(f"In env {i}, robot_actor_index = {self.robot_actor_index}, robot_body_intex = {self.robot_body_index}, robot_body_handle = {self.robot_body_handle}")
+            # print(f"robot_actor_handle = {actor_handle}")
+            # print("env_handle = ", env_handle)
+
             # Create Cemara
             camera_properties = gymapi.CameraProperties()
-            camera_properties.width = 360
-            camera_properties.height = 360
+            camera_properties.width = 224
+            camera_properties.height = 224
+            camera_properties.enable_tensors = True
             camera_handle = self.gym.create_camera_sensor(env_handle, camera_properties)
             camera_offset = gymapi.Vec3(0, 0, -0.2)
             camera_rotation = gymapi.Quat.from_axis_angle(gymapi.Vec3(0, 1, 0), np.deg2rad(90))
             self.gym.attach_camera_to_body(camera_handle, env_handle, self.robot_body_handle, gymapi.Transform(camera_offset, camera_rotation), gymapi.FOLLOW_TRANSFORM)
+            self.camera_handles.append(camera_handle)
             # camera_position = gymapi.Vec3(1.5, 1, 1.5)
             # camera_target = gymapi.Vec3(0, 0, 0)
             # self.gym.set_camera_location(camera_handle, env_handle, camera_position, camera_target)
-            self.camera_handles.append(camera_handle)
+
+            camera_tensor = self.gym.get_camera_image_gpu_tensor(self.sim, env_handle, camera_handle, gymapi.IMAGE_COLOR)
+            torch_camera_tensor = gymtorch.wrap_tensor(camera_tensor)
+            # print("!!!!!!!!!!!!!!!!", camera_tensor)
+            self.camera_root_tensors.append(torch_camera_tensor)
+
+            camera_dep_tensor = self.gym.get_camera_image_gpu_tensor(self.sim, env_handle, camera_handle, gymapi.IMAGE_SEGMENTATION)
+            torch_camera_dep_tensor = gymtorch.wrap_tensor(camera_dep_tensor)
+            self.camera_dep_root_tensors.append(torch_camera_dep_tensor)
+
+            
 
             pos = torch.tensor([0, 0, 0.2], device=self.device)
             start_pose.p = gymapi.Vec3(*pos)
@@ -177,9 +201,12 @@ class TrackGround(BaseTask):
             self.tar_body_handle = self.gym.get_actor_rigid_body_handle(env_handle, tar_actor_handle, 0)
             self.tar_actor_index = self.gym.get_actor_index(env_handle, tar_actor_handle, gymapi.IndexDomain.DOMAIN_ENV)
             self.tar_body_index = self.gym.get_actor_rigid_body_index(env_handle, tar_actor_handle, 0, gymapi.IndexDomain.DOMAIN_ENV)
-            print(f"In env {i}, tar_actor_index = {self.tar_actor_index}, tar_body_intex = {self.tar_body_index}, tar_body_handle = {self.tar_body_handle}")
-            print(f"tar_actor_handle = {tar_actor_handle}")
+            # print(f"In env {i}, tar_actor_index = {self.tar_actor_index}, tar_body_intex = {self.tar_body_index}, tar_body_handle = {self.tar_body_handle}")
+            # print(f"tar_actor_handle = {tar_actor_handle}")
 
+            tar_seg_id_count += 1
+            self.gym.set_rigid_body_segmentation_id(env_handle, tar_actor_handle, 0, tar_seg_id_count)
+            # print("!!!!!!!!!!!!!!!!", self.gym.get_rigid_body_segmentation_id(env_handle, tar_actor_handle, self.tar_body_index))
             # Is this nesessary?
             # pos = torch.tensor([2, 0, 0], device=self.device)
             # wall_pose = gymapi.Transform()
@@ -190,11 +217,13 @@ class TrackGround(BaseTask):
             self.actor_handles.append(actor_handle)
             self.actor_handles.append(tar_actor_handle)
         
+        # self.camera_root_tensors = torch.stack(self.camera_root_tensors)
+
         self.robot_mass = 0
         for prop in self.robot_body_props:
             self.robot_mass += prop.mass
-        print("The actor handle list:", self.actor_handles)
-        print("The camera handle list:", self.camera_handles)
+        # print("The actor handle list:", self.actor_handles)
+        # print("The camera handle list:", self.camera_handles)
         print("Total robot mass: ", self.robot_mass)
         
         print("\n\n\n\n\n ENVIRONMENT CREATED \n\n\n\n\n\n")
@@ -213,6 +242,9 @@ class TrackGround(BaseTask):
         
         self.progress_buf += 1
         self.compute_observations()
+        self.compute_tar_observations()
+
+        # self.check_reset()
         reset_env_ids = self.reset_buf.nonzero(as_tuple=False).squeeze(-1)
         if len(reset_env_ids) > 0:
             self.reset_idx(reset_env_ids)
@@ -220,31 +252,32 @@ class TrackGround(BaseTask):
         self.time_out_buf = self.progress_buf > self.max_episode_length
         self.extras["time_outs"] = self.time_out_buf
 
-        obs = self.obs_buf.clone()
-        # new state generated by aerial gym
-        new_state_ag = torch.zeros((self.num_envs, 12)).to(self.device)
-        new_state_ag[:, :3] = obs[:, :3] # position
-        new_state_ag[:, 3:6] = self.qua2euler(obs[:, 3:7]) # orientation
-        # new_state_ag[3] = quat_axis(self.root_quats, 0)[0, 0] # orientation
-        new_state_ag[:, 6:9] = obs[:, 7:10] # linear acceleration
-        new_state_ag[:, 9:12] = obs[:, 10:13] # angular acceleration
+        # obs = self.obs_buf.clone()
+        # # new state generated by aerial gym
+        # new_state_ag = torch.zeros((self.num_envs, 12)).to(self.device)
+        # new_state_ag[:, :3] = obs[:, :3] # position
+        # new_state_ag[:, 3:6] = self.qua2euler(obs[:, 3:7]) # orientation
+        # # new_state_ag[3] = quat_axis(self.root_quats, 0)[0, 0] # orientation
+        # new_state_ag[:, 6:9] = obs[:, 7:10] # linear acceleration
+        # new_state_ag[:, 9:12] = obs[:, 10:13] # angular acceleration
 
-        self.compute_tar_observations()
-        obs = self.obs_buf.clone()
-        new_state_tar = torch.zeros((self.num_envs, 12)).to(self.device)
-        new_state_tar[:, :3] = obs[:, :3]
-        new_state_tar[:, 3:6] = self.qua2euler(obs[:, 3:7]) # orientation
-        new_state_tar[:, 6:9] = obs[:, 7:10] # linear acceleration
-        new_state_tar[:, 9:12] = obs[:, 10:13] # angular acceleration
 
-        return new_state_ag, new_state_tar
+        # obs = self.tar_obs_buf.clone()
+        # new_state_tar = torch.zeros((self.num_envs, 12)).to(self.device)
+        # new_state_tar[:, :3] = obs[:, :3]
+        # new_state_tar[:, 3:6] = self.qua2euler(obs[:, 3:7]) # orientation
+        # new_state_tar[:, 6:9] = obs[:, 7:10] # linear acceleration
+        # new_state_tar[:, 9:12] = obs[:, 10:13] # angular acceleration
+
+        return self.get_quad_state(), self.get_tar_state()
     
 
     def reset(self):
         """ Reset all robots"""
         self.reset_idx(torch.arange(self.num_envs, device=self.device))
         # print(self.root_states)
-        return 
+        
+        return self.get_quad_state()
 
     def reset_idx(self, env_ids):
         num_resets = len(env_ids)
@@ -252,8 +285,9 @@ class TrackGround(BaseTask):
         self.root_states[env_ids] = self.initial_root_states[env_ids]
         # reset position
         # self.root_states[env_ids, 0:3] = 5.0*torch_rand_float(0, 1.0, (num_resets, 3), self.device)
+        # self.root_states[env_ids, 0:2] = 3.0 * torch_rand_float(-1.0, 1.0, (num_resets, 2), self.device)
         self.root_states[env_ids, 0:2] = 0
-        self.root_states[env_ids, 3] = 5
+        self.root_states[env_ids, 2] = 5
         # reset linevels
         # self.root_states[env_ids, 7:10] = 0.2*torch_rand_float(-1.0, 1.0, (num_resets, 3), self.device)
         self.root_states[env_ids, 7:10] = 0
@@ -269,7 +303,16 @@ class TrackGround(BaseTask):
         # reset position
         # self.tar_root_states[env_ids, 0:3] = 5.0 * torch_rand_float(0, 1.0, (num_resets, 3), self.device)
         # self.tar_root_states[env_ids, 2] = 0
-        self.tar_root_states[env_ids, 0:3] = 0
+        self.tar_root_states[env_ids, 0:3] = 3
+
+        tmp_num = int(num_resets / 2)
+        tmp_list = torch.randperm(num_resets)[:tmp_num]
+        self.tar_root_states[tmp_list, 0] *= -1
+        tmp_list = torch.randperm(num_resets)[:tmp_num]
+        self.tar_root_states[tmp_list, 1] *= -1
+        # self.tar_root_states[env_ids, 0:3] = torch.randint(-3, 4, (num_resets, 3), dtype=torch.float, device=self.device)
+        self.tar_root_states[env_ids, 2] = 0.8
+
         # reset linevels
         # self.tar_root_states[env_ids, 7:10] = 0.2*torch_rand_float(-1.0, 1.0, (num_resets, 3), self.device)
         self.tar_root_states[env_ids, 7:10] = 0
@@ -324,12 +367,12 @@ class TrackGround(BaseTask):
         return self.obs_buf
     
     def compute_tar_observations(self):
-        self.obs_buf[..., :3] = self.tar_root_positions
-        self.obs_buf[..., 3:7] = self.tar_root_quats
-        self.obs_buf[..., 7:10] = self.tar_root_linvels
-        self.obs_buf[..., 10:13] = self.tar_root_angvels
+        self.tar_obs_buf[..., :3] = self.tar_root_positions
+        self.tar_obs_buf[..., 3:7] = self.tar_root_quats
+        self.tar_obs_buf[..., 7:10] = self.tar_root_linvels
+        self.tar_obs_buf[..., 10:13] = self.tar_root_angvels
 
-        return self.obs_buf
+        return self.tar_obs_buf
 
     def set_start_pos(self, robot_start_pos, tar_start_pos):
         self.initial_root_states[:, :3] = robot_start_pos
@@ -341,8 +384,52 @@ class TrackGround(BaseTask):
         euler_angles = matrix_to_euler_angles(
             rotation_matrices, "ZYX")[:, [2, 1, 0]]
         return euler_angles
+    
+    def get_camera_output(self):
+        self.gym.start_access_image_tensors(self.sim)
+        tmp_camera_root_tensors = torch.stack(self.camera_root_tensors)
+        self.gym.end_access_image_tensors(self.sim)
+        return tmp_camera_root_tensors
+    
+    def get_camera_dep_output(self):
+        self.gym.start_access_image_tensors(self.sim)
+        tmp_camera_dep_root_tensors = torch.stack(self.camera_dep_root_tensors)
+        self.gym.end_access_image_tensors(self.sim)
+        return tmp_camera_dep_root_tensors
 
     def save_camera_output(self):
-        filepath = '/home/lab929/wzm/FYP/AGAPG/aerial_gym/scripts/camera_output/tmp.png'
+        filepath = '/home/cgv841/wzm/FYP/AGAPG/aerial_gym/scripts/camera_output/tmp.png'
         self.gym.write_camera_image_to_file(self.sim, self.envs[0], self.camera_handles[0], gymapi.IMAGE_COLOR, filepath)
         return self.gym.get_camera_image(self.sim, self.envs[0], self.camera_handles[0], gymapi.IMAGE_COLOR)
+    
+    def get_quad_state(self):
+        self.compute_observations()
+        obs = self.obs_buf.clone()
+        # new state generated by aerial gym
+        new_state_ag = torch.zeros((self.num_envs, 12)).to(self.device)
+        new_state_ag[:, :3] = obs[:, :3] # position
+        new_state_ag[:, 3:6] = self.qua2euler(obs[:, 3:7]) # orientation
+        # new_state_ag[3] = quat_axis(self.root_quats, 0)[0, 0] # orientation
+        new_state_ag[:, 6:9] = obs[:, 7:10] # linear acceleration
+        new_state_ag[:, 9:12] = obs[:, 10:13] # angular acceleration
+        return new_state_ag
+
+    def get_tar_state(self):
+        self.compute_tar_observations()
+        obs = self.tar_obs_buf.clone()
+        new_state_tar = torch.zeros((self.num_envs, 12)).to(self.device)
+        new_state_tar[:, :3] = obs[:, :3]
+        new_state_tar[:, 3:6] = self.qua2euler(obs[:, 3:7]) # orientation
+        new_state_tar[:, 6:9] = obs[:, 7:10] # linear acceleration
+        new_state_tar[:, 9:12] = obs[:, 10:13] # angular acceleration
+        return new_state_tar
+
+    def check_reset(self):
+        # """Must call compute_observations and compute_tar_observations before"""
+        dep_image = self.get_camera_dep_output()
+        sum_dep_image = torch.sum(dep_image, dim=(1, 2))
+
+        
+        reset_env_ids = sum_dep_image.nonzero(as_tuple=False).squeeze(-1)
+        if len(reset_env_ids) > 0:
+            self.reset_idx(reset_env_ids)
