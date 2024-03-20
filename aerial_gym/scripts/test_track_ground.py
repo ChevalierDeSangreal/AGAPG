@@ -28,7 +28,7 @@ from aerial_gym.envs import LearntDynamics
 def get_args():
 	custom_parameters = [
 		{"name": "--task", "type": str, "default": "track_ground", "help": "The name of the task."},
-		{"name": "--experiment_name", "type": str, "default": "exp3_1__modelVer2__part2", "help": "Name of the experiment to run or load."},
+		{"name": "--experiment_name", "type": str, "default": "exp3_1__compare", "help": "Name of the experiment to run or load."},
 		{"name": "--headless", "action": "store_true", "default": True, "help": "Force display off at all times"},
 		{"name": "--horovod", "action": "store_true", "default": False, "help": "Use horovod for multi-gpu training"},
 		{"name": "--rl_device", "type": str, "default": "cuda:0", "help": 'Device used by the RL algorithm, (cpu, gpu, cuda:0, cuda:1 etc..)'},

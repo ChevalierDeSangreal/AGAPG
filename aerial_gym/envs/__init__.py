@@ -12,6 +12,9 @@ from .base.track_simple import TrackSimple
 from .base.track_simple_config import TrackSimpleCfg
 from .base.track_ground_config import TrackGroundCfg
 from .base.dynamics_learnt import LearntDynamics
+from .base.track_groundVer2 import TrackGroundVer2
+from .base.track_groundVer3 import TrackGroundVer3
+from .base.track_groundVer4 import TrackGroundVer4
 
 from aerial_gym.utils.task_registry import task_registry
 
@@ -21,3 +24,6 @@ task_registry.register( "train_dynamics", DynamicsTrainer, AerialRobotCfg())
 task_registry.register( "track_simple", TrackSimple, TrackSimpleCfg())
 task_registry.register( "track_ground", TrackGround, TrackGroundCfg())
 task_registry.register( "track_ground_test", TrackGroundTest, TrackGroundCfg())
+task_registry.register( "track_groundVer2", TrackGroundVer2, TrackGroundCfg())
+task_registry.register( "track_groundVer3", TrackGroundVer3, TrackGroundCfg())
+task_registry.register( "track_groundVer4", TrackGroundVer4, TrackGroundCfg())

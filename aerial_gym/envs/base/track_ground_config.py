@@ -19,6 +19,7 @@ class TrackGroundCfg(BaseConfig):
         env_spacing = 10
         episode_length_s = 8 # episode length in seconds
         num_control_steps_per_env_step = 1 # number of physics steps per env step
+        max_sample_length = 500
 
     class control:
         """

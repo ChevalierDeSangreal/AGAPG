@@ -11,3 +11,4 @@ from .logger import Logger
 from .math import *
 
 from .asset_manager import AssetManager
+from .loss import *
