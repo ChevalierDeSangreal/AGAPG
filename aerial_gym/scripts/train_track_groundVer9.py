@@ -30,7 +30,7 @@ from aerial_gym.envs import LearntDynamics
 def get_args():
     custom_parameters = [
         {"name": "--task", "type": str, "default": "track_groundVer4", "help": "The name of the task."},
-        {"name": "--experiment_name", "type": str, "default": "exp3_7__bigger", "help": "Name of the experiment to run or load."},
+        {"name": "--experiment_name", "type": str, "default": "exp3_7__bigger__no_pretrain", "help": "Name of the experiment to run or load."},
         {"name": "--headless", "action": "store_true", "default": True, "help": "Force display off at all times"},
         {"name": "--horovod", "action": "store_true", "default": False, "help": "Use horovod for multi-gpu training"},
         {"name": "--num_envs", "type": int, "default": 8, "help": "Number of environments to create. Batch size will be equal to this"},
@@ -178,10 +178,10 @@ if __name__ == "__main__":
         scaled_now_quad_pos = torch.max(new_state_dyn, torch.tensor(-10, device=device))
         scaled_now_quad_pos = torch.min(scaled_now_quad_pos, torch.tensor(10, device=device))
         loss1 = criterion(scaled_now_quad_pos[:, :2], tar_pos[:, :2])
-        loss2 = torch.sqrt(torch.sum((scaled_now_quad_pos[:, 2] - 5) ** 2)) / args.batch_size
+        loss2 = torch.sum(torch.sqrt((scaled_now_quad_pos[:, 2] - 5) ** 2)) / args.batch_size
         loss =  loss1
         dis_hoz = torch.sum(torch.norm(scaled_now_quad_pos[:, :2] - tar_pos[:, :2], dim=1, p=2)) / args.batch_size
-        print(f"Epoch {epoch}: loss = {loss}, loss2 = {loss2}")
+        print(f"Epoch {epoch}: loss = {loss}, ver dis = {loss2}, hor dis = {dis_hoz}")
         writer.add_scalar('Loss', loss.item(), epoch)
         writer.add_scalar('Vertical Distance', loss2.item(), epoch)
         writer.add_scalar('Horizen Distance', dis_hoz.item(), epoch)

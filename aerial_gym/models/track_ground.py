@@ -134,7 +134,7 @@ class TrackGroundModelVer4(nn.Module):
     """
     
     """
-    def __init__(self, input_size=13, hidden_size1=128, hidden_size2=128, hidden_size3=128, hidden_size4=128, hidden_size5=128, output_size=4, device='cpu'):
+    def __init__(self, input_size=13, hidden_size1=256, hidden_size2=256, hidden_size3=256, hidden_size4=256, hidden_size5=256, output_size=4, device='cpu'):
         print("SimpleTrackModel Initializing...")
 
         super(TrackGroundModelVer4, self).__init__()
@@ -171,8 +171,8 @@ class TrackGroundModelVer4(nn.Module):
         x = self.activation3(x)
         x = self.hidden_layer4(x)
         x = self.activation4(x)
-        x = self.hidden_layer5(x)
-        x = self.activation5(x)
+        # x = self.hidden_layer5(x)
+        # x = self.activation5(x)
         x = self.output_layer(x)
         # x = self.tanh(x)
         x = torch.sigmoid(x) * 2 - 1
@@ -199,12 +199,13 @@ class TrackGroundModelVer5(nn.Module):
 
         self.resnet = Resnet()
         if resnet_load_path:
+            print("Loading resnet from:", resnet_load_path)
             self.resnet.load_state_dict(torch.load(resnet_load_path))
         self.resnet.dense3 = nn.Linear(16, 4).to(device)
-        self.transform = transforms.Compose([
-            transforms.Resize(227),
-            transforms.ToTensor(),  
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),])
+        # self.transform = transforms.Compose([
+        #     transforms.Resize(227),
+        #     transforms.ToTensor(),  
+        #     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),])
 
 
     def forward(self, now_state, image):

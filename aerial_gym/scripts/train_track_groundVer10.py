@@ -33,13 +33,13 @@ def get_args():
         {"name": "--experiment_name", "type": str, "default": "exp5", "help": "Name of the experiment to run or load."},
         {"name": "--headless", "action": "store_true", "default": True, "help": "Force display off at all times"},
         {"name": "--horovod", "action": "store_true", "default": False, "help": "Use horovod for multi-gpu training"},
-        {"name": "--num_envs", "type": int, "default": 8, "help": "Number of environments to create. Batch size will be equal to this"},
+        {"name": "--num_envs", "type": int, "default": 32, "help": "Number of environments to create. Batch size will be equal to this"},
         {"name": "--seed", "type": int, "default": 42, "help": "Random seed. Overrides config file if provided."},
 
         # train setting
-        {"name": "--learning_rate", "type":float, "default": 2.6e-4,
+        {"name": "--learning_rate", "type":float, "default": 2.6e-3,
             "help": "the learning rate of the optimizer"},
-        {"name": "--batch_size", "type":int, "default": 8,
+        {"name": "--batch_size", "type":int, "default": 32,
             "help": "batch size of training. Notice that batch_size should be equal to num_envs"},
         {"name": "--num_worker", "type":int, "default": 4,
             "help": "num worker of dataloader"},
@@ -59,10 +59,6 @@ def get_args():
         {"name": "--param_save_path_track_simple", "type":str, "default": '/home/cgv841/wzm/FYP/AGAPG/aerial_gym/param_saved/track_groundVer11.pth',
             "help": "The path to model parameters"},
         {"name": "--param_load_path_track_simple", "type":str, "default": '/home/cgv841/wzm/FYP/AGAPG/aerial_gym/param_saved/track_groundVer9__len_sample_50.pth',
-            "help": "The path to model parameters"},
-        {"name": "--param_save_path_resnet", "type":str, "default": '/home/cgv841/wzm/FYP/AGAPG/aerial_gym/param_saved/track_groundVer11.pth',
-            "help": "The path to model parameters"},
-        {"name": "--param_load_path_resnet", "type":str, "default": '/home/cgv841/wzm/FYP/AGAPG/aerial_gym/param_saved/track_groundVer9__len_sample_50.pth',
             "help": "The path to model parameters"},
         ]
 
@@ -181,7 +177,7 @@ if __name__ == "__main__":
         scaled_now_quad_pos = torch.max(new_state_dyn, torch.tensor(-10, device=device))
         scaled_now_quad_pos = torch.min(scaled_now_quad_pos, torch.tensor(10, device=device))
         loss1 = criterion(scaled_now_quad_pos[:, :2], tar_pos[:, :2])
-        loss2 = torch.sqrt(torch.sum((scaled_now_quad_pos[:, 2] - 5) ** 2)) / args.batch_size
+        loss2 = torch.sum(torch.sqrt((scaled_now_quad_pos[:, 2] - 5) ** 2)) / args.batch_size
         loss =  loss1
         dis_hoz = torch.sum(torch.norm(scaled_now_quad_pos[:, :2] - tar_pos[:, :2], dim=1, p=2)) / args.batch_size
         print(f"Epoch {epoch}: loss = {loss}, ver dis = {loss2}, hor dis = {dis_hoz}")
