@@ -37,7 +37,7 @@ def get_args():
         {"name": "--seed", "type": int, "default": 81, "help": "Random seed. Overrides config file if provided."},
 
         # train setting
-        {"name": "--learning_rate", "type":float, "default": 2.6e-6,
+        {"name": "--learning_rate", "type":float, "default": 2.6e-4,
             "help": "the learning rate of the optimizer"},
         {"name": "--batch_size", "type":int, "default": 8,
             "help": "batch size of training. Notice that batch_size should be equal to num_envs"},
@@ -48,9 +48,9 @@ def get_args():
         {"name": "--len_sample", "type":int, "default": 100,
             "help": "length of a sample"},
         {"name": "--tmp", "type": bool, "default": True, "help": "Set false to officially save the trainning log"},
-        {"name": "--gamma", "type":int, "default": 0.5,
+        {"name": "--gamma", "type":int, "default": 0.8,
             "help": "how much will learning rate decrease"},
-        {"name": "--step_size", "type":int, "default": 500,
+        {"name": "--step_size", "type":int, "default": 250,
             "help": "learning rate will decrease every step_size steps"},
 
         # model setting
@@ -137,7 +137,7 @@ if __name__ == "__main__":
         
         now_quad_state = envs.reset()
         
-
+    
         for step in range(args.len_sample):
         # if 1:
             # print("Step: ", step)
@@ -162,7 +162,7 @@ if __name__ == "__main__":
                 scaled_now_quad_pos = torch.min(scaled_now_quad_pos, torch.tensor(10, device=device))
                 loss1 = criterion(scaled_now_quad_pos[:, :2], tar_pos[:, :2])
                 loss2 = torch.sum(torch.abs(scaled_now_quad_pos[:, 2] - 5)) / args.batch_size
-                loss = 0.05 * loss1 + loss2
+                loss = 0.5 * loss1 + loss2
                 loss.backward()
                 max_norm = 1.0  # 设置梯度裁剪的阈值
                 torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
@@ -190,7 +190,7 @@ if __name__ == "__main__":
         scaled_now_quad_pos = torch.min(scaled_now_quad_pos, torch.tensor(10, device=device))
         loss1 = criterion(scaled_now_quad_pos[:, :2], tar_pos[:, :2])
         loss2 = torch.sum(torch.abs(scaled_now_quad_pos[:, 2] - 5)) / args.batch_size
-        loss = 0.05 * loss1 + loss2
+        loss = 0.5 * loss1 + loss2
         dis_hoz = torch.sum(torch.norm(scaled_now_quad_pos[:, :2] - tar_pos[:, :2], dim=1, p=2)) / args.batch_size
         print(f"Epoch {epoch}: loss = {loss}, ver dis = {loss2}, hor dis = {dis_hoz}")
         writer.add_scalar('Loss', loss.item(), epoch)

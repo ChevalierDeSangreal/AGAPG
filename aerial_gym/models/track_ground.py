@@ -171,8 +171,8 @@ class TrackGroundModelVer4(nn.Module):
         x = self.activation3(x)
         x = self.hidden_layer4(x)
         x = self.activation4(x)
-        # x = self.hidden_layer5(x)
-        # x = self.activation5(x)
+        x = self.hidden_layer5(x)
+        x = self.activation5(x)
         x = self.output_layer(x)
         # x = self.tanh(x)
         x = torch.sigmoid(x) * 2 - 1

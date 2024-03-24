@@ -1,5 +1,6 @@
 import torch.nn as nn
 import torch
+from torch import tensor
 
 def acc_loss(quad_state, tar_pos, criterion):
     acc = quad_state[:, 6:8]
@@ -17,16 +18,20 @@ def acch_loss(quad_state, tar_pos, tar_height, criterion):
     return criterion(acc, dis)
 
 
-def pav_loss(quad_state, tar_pos, criterion):
-    vel_hoz = quad_state[:, 6:9]
-    acc_hoz = quad_state[:, 9:12]
+def pav_loss(quad_state, tar_pos, tar_h, criterion):
+    vel = quad_state[:, 6:9]
+    acc = quad_state[:, 9:12]
+
+    z_coords = torch.full((quad_state.size(0), 1), tar_h, dtype=quad_state.dtype, device=quad_state.device)
     
-    dis_hoz = (tar_pos[:, :2] - quad_state[:, :2])
+    tar_pos = tar_pos[:, :2]
+    tar_pos = torch.cat((tar_pos, z_coords), dim=1)
+    # print(tar_pos.shape, quad_state[:, :3].shape)
+    dis = (tar_pos - quad_state[:, :3])
     
+    loss_vel = criterion(vel, dis)
+    loss_acc = criterion(acc, dis)
+    loss_dis = criterion(tar_pos, quad_state[:, :3])
     
-    loss_vel_hoz = criterion(vel_hoz, dis_hoz)
-    loss_acc_hoz = criterion(acc_hoz, dis_hoz)
-    loss_dis_hoz = criterion(tar_pos[:, :2], quad_state[:, :2])
-    
-    loss = 0.8 * loss_dis_hoz + 0.15 * loss_vel_hoz + 0.05 * loss_acc_hoz
+    loss = 0.8 * loss_dis + 0.15 * loss_vel + 0.05 * loss_acc
     return loss
