@@ -35,3 +35,13 @@ def pav_loss(quad_state, tar_pos, tar_h, criterion):
     
     loss = 0.8 * loss_dis + 0.15 * loss_vel + 0.05 * loss_acc
     return loss
+
+def velh_loss(quad_state, tar_pos, tar_h):
+    vel = quad_state[:, 6:9]
+    
+    z_coords = torch.full((quad_state.size(0), 1), tar_h, dtype=quad_state.dtype, device=quad_state.device)
+    tar_pos = torch.cat((tar_pos[:, :2], z_coords), dim=1)
+    dis = (tar_pos - quad_state[:, :3])
+    
+    loss = torch.norm(vel - dis, dim=1, p=2)
+    return loss

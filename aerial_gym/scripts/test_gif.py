@@ -24,13 +24,12 @@ sys.path.append('/home/cgv841/wzm/FYP/AGAPG')
 # print(sys.path)
 from aerial_gym.envs import *
 from aerial_gym.utils import task_registry
-from aerial_gym.dataset import QuadGroundDataset
 from aerial_gym.models import TrackGroundModelVer4
 from aerial_gym.envs import LearntDynamics
 # os.path.basename(__file__).rstrip(".py")
 def get_args():
     custom_parameters = [
-        {"name": "--task", "type": str, "default": "track_groundVer4", "help": "The name of the task."},
+        {"name": "--task", "type": str, "default": "track_groundVer5", "help": "The name of the task."},
         {"name": "--experiment_name", "type": str, "default": "gif_maker", "help": "Name of the experiment to run or load."},
         {"name": "--headless", "action": "store_true", "default": True, "help": "Force display off at all times"},
         {"name": "--horovod", "action": "store_true", "default": False, "help": "Use horovod for multi-gpu training"},
@@ -52,7 +51,7 @@ def get_args():
         # model setting
         {"name": "--param_path_dynamic", "type":str, "default": '/home/cgv841/wzm/FYP/AGAPG/aerial_gym/param_saved/dynamic_learntVer2.pth',
             "help": "The path to dynamic model parameters"},
-        {"name": "--param_load_path_track_simple", "type":str, "default": '/home/cgv841/wzm/FYP/AGAPG/aerial_gym/param_saved/track_groundVer10.pth',
+        {"name": "--param_load_path_track_simple", "type":str, "default": '/home/cgv841/wzm/FYP/AGAPG/aerial_gym/param_saved/track_groundVer15_saved.pth',
             "help": "The path to model parameters"},
 
         # test setting
@@ -60,7 +59,7 @@ def get_args():
         {"name": "--batch_size", "type":int, "default": 2,  "help": "batch size of training. Notice that batch_size should be equal to num_envs"},
         {"name": "--num_epoch", "type":int, "default": 2, "help": "num of epoch"},
         {"name": "--num_worker", "type":int, "default": 4, "help": "num worker of dataloader"},
-        {"name": "--len_sample", "type":int, "default": 100, "help": "length of a sample"},
+        {"name": "--len_sample", "type":int, "default": 150, "help": "length of a sample"},
         
         ]
 

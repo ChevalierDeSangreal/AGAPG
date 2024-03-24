@@ -279,14 +279,22 @@ class TrackGroundVer5(BaseTask):
         return self.get_quad_state(), self.get_tar_state()
     
 
-    def reset(self):
+    def reset(self, reset_buf=None, reset_quad_state=None):
         """ Reset all robots"""
-        self.reset_idx(torch.arange(self.num_envs, device=self.device))
+        if reset_buf is None:
+            reset_idx = torch.arange(self.num_envs, device=self.device)
+        else:
+            reset_idx = torch.nonzero(reset_buf).squeeze(-1)
+        if reset_quad_state is not None:
+            self.set_reset_out(reset_quad_state)
+        # print(reset_buf)
+        self.set_reset_idx(reset_idx)
         # print(self.root_states)
+        self.gym.set_actor_root_state_tensor(self.sim, self.root_tensor)
         
         return self.get_quad_state()
 
-    def reset_idx(self, env_ids):
+    def set_reset_idx(self, env_ids):
         num_resets = len(env_ids)
 
         self.root_states[env_ids] = self.initial_root_states[env_ids]
@@ -331,7 +339,7 @@ class TrackGroundVer5(BaseTask):
         self.tar_root_states[env_ids, 3:7] = 0
         self.tar_root_states[env_ids, 6] = 1.0
 
-        self.gym.set_actor_root_state_tensor(self.sim, self.root_tensor)
+        # self.gym.set_actor_root_state_tensor(self.sim, self.root_tensor)
         self.reset_buf[env_ids] = 0
         self.progress_buf[env_ids] = 0
         self.time_out_buf[env_ids] = 0
@@ -411,7 +419,7 @@ class TrackGroundVer5(BaseTask):
         self.gym.end_access_image_tensors(self.sim)
         return tmp_camera_dep_root_tensors
 
-    def save_camera_output(self, file_name="tmp.png", file_path="/home/cgv841/wzm/FYP/AGAPG/aerial_gym/scripts/camera_output/"):
+    def save_camera_output(self, file_name="tmp.png", file_path="/home/lab929/wzm/FYP/AGAPG/aerial_gym/scripts/camera_output/"):
         filepath = file_path + file_name
         self.gym.write_camera_image_to_file(self.sim, self.envs[1], self.camera_handles[1], gymapi.IMAGE_SEGMENTATION, filepath)
         return self.gym.get_camera_image(self.sim, self.envs[1], self.camera_handles[1], gymapi.IMAGE_COLOR)
@@ -459,24 +467,25 @@ class TrackGroundVer5(BaseTask):
         out_space = torch.where(torch.logical_or(obs[:, 2] > 10, obs[:, 2] < 0), ones, out_space)
         return out_space
             
-    def reset_to(self, tar_state):
+    def set_reset_out(self, tar_state):
+        not_reset_idx = torch.arange(self.num_envs, device=self.device)
         tar_state = tar_state.detach()
         tmp_tar_state = torch.zeros((self.num_envs, 13)).to(self.device)
-        tmp_tar_state[:, :3] = tar_state[:, :3]
-        tmp_tar_state[:, 3:7] = self.euler2qua(tar_state[:, 3:6])
-        tmp_tar_state[:, 7:10] = tar_state[:, 6:9]
-        tmp_tar_state[:, 10:13] = tar_state[:, 9:12]
+        tmp_tar_state[not_reset_idx, :3] = tar_state[not_reset_idx, :3]
+        tmp_tar_state[not_reset_idx, 3:7] = self.euler2qua(tar_state[not_reset_idx, 3:6])
+        tmp_tar_state[not_reset_idx, 7:10] = tar_state[not_reset_idx, 6:9]
+        tmp_tar_state[not_reset_idx, 10:13] = tar_state[not_reset_idx, 9:12]
 
         self.root_states.copy_(tmp_tar_state)
 
-        self.gym.set_actor_root_state_tensor(self.sim, self.root_tensor)
+        # self.gym.set_actor_root_state_tensor(self.sim, self.root_tensor)
         
-    def reset_out(self):
+    def check_reset_out(self):
         dep_image = self.get_camera_dep_output()
         # print(dep_image.shape)
         sum_dep_image = torch.sum(dep_image, dim=(1, 2))
         # print("sum_dep_image:", sum_dep_image)
-        out_sight = torch.where(sum_dep_image == 0, torch.tensor(1), torch.tensor(0)).squeeze(-1)
+        out_sight = torch.where(sum_dep_image == 0, torch.tensor(1, device=self.device), torch.tensor(0, device=self.device)).squeeze(-1)
         # print("out_sight:", out_sight)
         
         ones = torch.ones_like(self.reset_buf)
@@ -494,7 +503,5 @@ class TrackGroundVer5(BaseTask):
         reset_buf = torch.logical_or(out_space, torch.logical_or(out_sight, out_time))
         reset_idx = torch.nonzero(reset_buf).squeeze(-1)
         
-        # print("Now reseting:", reset_idx)
-        self.reset_idx(reset_idx)
         
         return reset_buf, reset_idx

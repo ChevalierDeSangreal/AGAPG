@@ -22,7 +22,7 @@ from torch.optim import lr_scheduler
 sys.path.append('/home/cgv841/wzm/FYP/AGAPG')
 # print(sys.path)
 from aerial_gym.envs import *
-from aerial_gym.utils import task_registry, acch_loss
+from aerial_gym.utils import task_registry, velh_loss
 from aerial_gym.dataset import QuadGroundDataset
 from aerial_gym.models import TrackGroundModelVer4
 from aerial_gym.envs import LearntDynamics
@@ -131,67 +131,56 @@ if __name__ == "__main__":
     scheduler = lr_scheduler.StepLR(optimizer, step_size=args.step_size, gamma=args.gamma)
 
 
+
     for epoch in range(args.num_epoch):
         print(f"Epoch {epoch} begin...")
         optimizer.zero_grad()
         
-        now_quad_state = envs.reset()
-        
+        reset_buf = None
+        reset_quad_state = None
         # train
         for step in range(args.len_sample):
-        # if 1:
-            # print("Step: ", step)
             
-            # print(now_state, tar_pos)
-            # action = model(now_state, tar_pos)]
+            now_quad_state = envs.reset(reset_buf=reset_buf, reset_quad_state=reset_quad_state)
+            reset_buf = torch.zeros((args.batch_size,))
+            
             image = envs.get_camera_output()
             
             action = model(now_quad_state[:, 3:], image)
             
-            # action = torch_rand_float(-1.0, 1.0, (args.batch_size, 4), device)
-            # print(action, now_state)
             new_state_dyn = dynamic(now_quad_state, action, envs.cfg.sim.dt)
+            
             new_state_sim, tar_state = envs.step(action)
             tar_pos = tar_state[:, :3]
-            # print(new_state_dyn, tar_pos)
+            
             now_quad_state = new_state_dyn
 
-            if (step + 1) % 50 == 0:
-                # print("Here I am!!")
-                reset_buf, reset_idx = envs.reset_out()
-                if len(reset_idx):
-                    print(f"On step {step}, reset {reset_idx}")
-                not_reset_buf = torch.logical_not(reset_buf)
-                # loss1 = criterion(scaled_now_quad_pos[:, :2], tar_pos[:, :2])
-                # loss2 = torch.sum(torch.abs(scaled_now_quad_pos[:, 2] - 5)) / args.batch_size
-                loss1 = torch.norm(now_quad_state[:, :2] - tar_pos[:, :2], dim=1, p=2)
-                loss2 = torch.abs(now_quad_state[:, 2] - 5)
-                loss = 0.8 * loss1 + loss2
-                loss.backward(not_reset_buf)
-                # scaled_now_quad_pos = torch.max(new_state_dyn, torch.tensor(-10, device=device))
-                # scaled_now_quad_pos = torch.min(scaled_now_quad_pos, torch.tensor(10, device=device))
-                # loss1 = criterion(scaled_now_quad_pos[:, :2], tar_pos[:, :2])
-                # loss2 = torch.sum(torch.abs(scaled_now_quad_pos[:, 2] - 5)) / args.batch_size
-                # loss = 0.5 * loss1 + loss2
-                # loss.backward()
-                ave_loss = torch.sum(torch.mul(not_reset_buf, loss)) / (args.batch_size - len(reset_idx))
-                # ave_loss = loss
-                max_norm = 1.0  # 设置梯度裁剪的阈值
-                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
-                optimizer.step()
-                optimizer.zero_grad()
-                now_quad_state = now_quad_state.detach()
+            reset_buf, reset_idx = envs.check_reset_out()
+            if len(reset_idx):
+                print(f"On step {step}, reset {reset_idx}")
+            not_reset_buf = torch.logical_not(reset_buf)
+
+            loss = velh_loss(now_quad_state, tar_pos, 5)
+            loss.backward(not_reset_buf)
+            ave_loss = torch.sum(torch.mul(not_reset_buf, loss)) / (args.batch_size - len(reset_idx))
+
+            max_norm = 1.0  # 设置梯度裁剪的阈值
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
+            optimizer.step()
+            optimizer.zero_grad()
+            
+            now_quad_state = now_quad_state.detach()
                 
             
             if (epoch + 1) % 10 == 0:
                 if (step + 1) % 10 == 0:
-            # #     # print(action)
-            # #     # print(now_state)
-                    print(f"    Step {step}: average loss = {ave_loss}, tar_pos = {tar_pos[0]}, now_pos = {now_quad_state[0, :3]}, action = {action[0]}")
+                    print(f"    Step {step}: average loss = {ave_loss}, tar_pos = {tar_pos[6]}, now_pos = {now_quad_state[6, :3]}, action = {action[6]}")
             
             
-            if step and not (step % 50):
-                envs.reset_to(now_quad_state)
+            if step and not (step % 20):
+                reset_quad_state = now_quad_state
+            else:
+                reset_quad_state = None
             
         # dis_sim_dyn = torch.norm(new_state_dyn[:, :2] - new_state_sim[:, :2], p=2, dim=1)    
         # print("Distance between sim and dynamics:", dis_sim_dyn)
@@ -205,60 +194,55 @@ if __name__ == "__main__":
         scheduler.step()
         
         # validation, no reset_out
-        
+
         if (epoch + 1) % 5 == 0:
             model.eval()
+            
             with torch.no_grad():
-                now_quad_state = envs.reset()
+                envs.step(action)
+                
+                reset_buf = None
+                reset_quad_state = None
+                
                 for step in range(args.len_sample):
-                # if 1:
-                    # print("Step: ", step)
                     
-                    # print(now_state, tar_pos)
-                    # action = model(now_state, tar_pos)]
+                    now_quad_state = envs.reset(reset_buf=reset_buf, reset_quad_state=reset_quad_state)
+                    reset_buf = torch.zeros((args.batch_size,))
+            
+            
                     image = envs.get_camera_output()
                     
                     action = model(now_quad_state[:, 3:], image)
                     
-                    # action = torch_rand_float(-1.0, 1.0, (args.batch_size, 4), device)
-                    # print(action, now_state)
                     new_state_dyn = dynamic(now_quad_state, action, envs.cfg.sim.dt)
                     new_state_sim, tar_state = envs.step(action)
                     tar_pos = tar_state[:, :3]
-                    # print(new_state_dyn, tar_pos)
+                    
                     now_quad_state = new_state_dyn
+                    if step and not (step % 20):
+                        reset_quad_state = now_quad_state
+                    else:
+                        reset_quad_state = None
 
-                        # loss1 = criterion(scaled_now_quad_pos[:, :2], tar_pos[:, :2])
-                        # loss2 = torch.sum(torch.abs(scaled_now_quad_pos[:, 2] - 5)) / args.batch_size
                 scaled_now_quad_pos = torch.max(new_state_dyn, torch.tensor(-10, device=device))
                 scaled_now_quad_pos = torch.min(scaled_now_quad_pos, torch.tensor(10, device=device))
-                loss1 = torch.norm(scaled_now_quad_pos[:, :2] - tar_pos[:, :2], dim=1, p=2)
-                loss2 = torch.abs(scaled_now_quad_pos[:, 2] - 5)
-                loss = 0.8 * loss1 + loss2
+                loss = velh_loss(scaled_now_quad_pos, tar_pos, 5)
                 ave_loss = torch.sum(loss) / args.batch_size
                 dis_hoz = torch.sum(torch.norm(scaled_now_quad_pos[:, :2] - tar_pos[:, :2], dim=1, p=2)) / args.batch_size
                 dis_ver = torch.sum(torch.abs(scaled_now_quad_pos[:, 2] - 5)) / args.batch_size
-                print(f"Epoch {epoch}: loss = {ave_loss}, ver dis = {dis_ver}, hor dis = {dis_hoz}")
+                print(f"Epoch {epoch}: Average loss = {ave_loss}, ver dis = {dis_ver}, hor dis = {dis_hoz}")
                 writer.add_scalar('Loss', ave_loss.item(), epoch)
                 writer.add_scalar('Vertical Distance', dis_ver.item(), epoch)
                 writer.add_scalar('Horizen Distance', dis_hoz.item(), epoch)
             model.train()
-        # loss.backward()
-        # max_norm = 1.0  # 设置梯度裁剪的阈值
-        # torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
-        # optimizer.step()
         
-        # break
             
-        # if (epoch + 1) % 100 == 0:
-        #     print("Saving Model...")
-            # torch.save(model.state_dict(), args.param_save_path_track_simple)
+        if (epoch + 1) % 100 == 0:
+            print("Saving Model...")
+            torch.save(model.state_dict(), args.param_save_path_track_simple)
             # break
             # dynamic.save_parameters()
-        # break
     
     writer.close()
     print("Training Complete!")
             
-
-        

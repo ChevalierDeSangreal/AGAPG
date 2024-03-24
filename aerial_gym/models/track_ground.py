@@ -11,7 +11,7 @@ class TrackGroundModel(nn.Module):
     
     """
     def __init__(self, input_size=16, hidden_size1=128, hidden_size2=128, hidden_size3=128, hidden_size4=128, output_size=4, device='cpu'):
-        print("SimpleTrackModel Initializing...")
+        print("TrackGroundModel Initializing...")
 
         super(TrackGroundModel, self).__init__()
         self.hidden_layer1 = nn.Linear(input_size, hidden_size1).to(device)
@@ -55,7 +55,7 @@ class TrackGroundModelVer2(nn.Module):
     
     """
     def __init__(self, input_size=16, hidden_size1=64, hidden_size2=64, hidden_size3=64, output_size=4, device='cpu'):
-        print("SimpleTrackModel Initializing...")
+        print("TrackGroundModel Initializing...")
 
         super(TrackGroundModelVer2, self).__init__()
         self.hidden_layer1 = nn.Linear(input_size, hidden_size1).to(device)
@@ -95,7 +95,7 @@ class TrackGroundModelVer3(nn.Module):
     
     """
     def __init__(self, input_size=13, hidden_size1=64, hidden_size2=64, hidden_size3=64, output_size=4, device='cpu'):
-        print("SimpleTrackModel Initializing...")
+        print("TrackGroundModel Initializing...")
 
         super(TrackGroundModelVer3, self).__init__()
         self.hidden_layer1 = nn.Linear(input_size, hidden_size1).to(device)
@@ -135,7 +135,7 @@ class TrackGroundModelVer4(nn.Module):
     
     """
     def __init__(self, input_size=13, hidden_size1=256, hidden_size2=256, hidden_size3=256, hidden_size4=256, hidden_size5=256, output_size=4, device='cpu'):
-        print("SimpleTrackModel Initializing...")
+        print("TrackGroundModel Initializing...")
 
         super(TrackGroundModelVer4, self).__init__()
         self.hidden_layer1 = nn.Linear(input_size, hidden_size1).to(device)
@@ -184,7 +184,7 @@ class TrackGroundModelVer5(nn.Module):
     """
     def __init__(self, input_size=13, hidden_size1=128, hidden_size2=128, hidden_size3=128, 
                  hidden_size4=128, output_size=4, device='cpu', resnet_load_path='/home/cgv841/wzm/FYP/AGAPG/aerial_gym/param_saved/resnet.pth'):
-        print("SimpleTrackModel Initializing...")
+        print("TrackGroundModel Initializing...")
 
         super(TrackGroundModelVer5, self).__init__()
         self.hidden_layer1 = nn.Linear(input_size, hidden_size1).to(device)
