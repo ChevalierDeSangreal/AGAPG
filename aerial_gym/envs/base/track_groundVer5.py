@@ -281,14 +281,15 @@ class TrackGroundVer5(BaseTask):
 
     def reset(self, reset_buf=None, reset_quad_state=None):
         """ Reset all robots"""
-        if reset_buf is None:
-            reset_idx = torch.arange(self.num_envs, device=self.device)
-        else:
-            reset_idx = torch.nonzero(reset_buf).squeeze(-1)
-        if reset_quad_state is not None:
-            self.set_reset_out(reset_quad_state)
+        # if reset_buf is None:
+        #     reset_idx = torch.arange(self.num_envs, device=self.device)
+        # else:
+        #     reset_idx = torch.nonzero(reset_buf).squeeze(-1)
+        # if reset_quad_state is not None:
+        #     self.set_reset_out(reset_quad_state)
         # print(reset_buf)
-        self.set_reset_idx(reset_idx)
+        # self.set_reset_idx(reset_idx)
+        self.set_reset_idx(torch.arange(self.num_envs, device=self.device))
         # print(self.root_states)
         self.gym.set_actor_root_state_tensor(self.sim, self.root_tensor)
         

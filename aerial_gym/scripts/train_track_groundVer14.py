@@ -137,12 +137,11 @@ if __name__ == "__main__":
         optimizer.zero_grad()
         
         reset_buf = None
-        reset_quad_state = None
+        now_quad_state = envs.reset(reset_buf=reset_buf, reset_quad_state=None).detach()
+        reset_buf = torch.zeros((args.batch_size,))
+                    
         # train
         for step in range(args.len_sample):
-            
-            now_quad_state = envs.reset(reset_buf=reset_buf, reset_quad_state=reset_quad_state)
-            reset_buf = torch.zeros((args.batch_size,))
             
             image = envs.get_camera_output()
             
@@ -169,18 +168,20 @@ if __name__ == "__main__":
             optimizer.step()
             optimizer.zero_grad()
             
-            now_quad_state = now_quad_state.detach()
-                
+            if (step + 1) % 20 == 0:
+                reset_quad_state = now_quad_state
+            else:
+                reset_quad_state = None
+            
+            now_quad_state = envs.reset(reset_buf=reset_buf, reset_quad_state=now_quad_state).detach()
+            reset_buf = torch.zeros((args.batch_size,))
             
             if (epoch + 1) % 10 == 0:
                 if (step + 1) % 10 == 0:
                     print(f"    Step {step}: average loss = {ave_loss}, tar_pos = {tar_pos[6]}, now_pos = {now_quad_state[6, :3]}, action = {action[6]}")
             
             
-            if step and not (step % 20):
-                reset_quad_state = now_quad_state
-            else:
-                reset_quad_state = None
+
             
         # dis_sim_dyn = torch.norm(new_state_dyn[:, :2] - new_state_sim[:, :2], p=2, dim=1)    
         # print("Distance between sim and dynamics:", dis_sim_dyn)
@@ -202,14 +203,12 @@ if __name__ == "__main__":
                 envs.step(action)
                 
                 reset_buf = None
-                reset_quad_state = None
+                now_quad_state = envs.reset(reset_buf=reset_buf, reset_quad_state=None)
+                reset_buf = torch.zeros((args.batch_size,))
+            
                 
                 for step in range(args.len_sample):
                     
-                    now_quad_state = envs.reset(reset_buf=reset_buf, reset_quad_state=reset_quad_state)
-                    reset_buf = torch.zeros((args.batch_size,))
-            
-            
                     image = envs.get_camera_output()
                     
                     action = model(now_quad_state[:, 3:], image)
@@ -219,10 +218,14 @@ if __name__ == "__main__":
                     tar_pos = tar_state[:, :3]
                     
                     now_quad_state = new_state_dyn
-                    if step and not (step % 20):
+                    if (step + 1) % 20 == 0:
                         reset_quad_state = now_quad_state
                     else:
                         reset_quad_state = None
+                        
+                    now_quad_state = envs.reset(reset_buf=reset_buf, reset_quad_state=reset_quad_state).detach()
+                    reset_buf = torch.zeros((args.batch_size,))
+                    
 
                 scaled_now_quad_pos = torch.max(new_state_dyn, torch.tensor(-10, device=device))
                 scaled_now_quad_pos = torch.min(scaled_now_quad_pos, torch.tensor(10, device=device))

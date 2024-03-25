@@ -33,19 +33,19 @@ def get_args():
         {"name": "--experiment_name", "type": str, "default": "exp6", "help": "Name of the experiment to run or load."},
         {"name": "--headless", "action": "store_true", "default": True, "help": "Force display off at all times"},
         {"name": "--horovod", "action": "store_true", "default": False, "help": "Use horovod for multi-gpu training"},
-        {"name": "--num_envs", "type": int, "default": 2, "help": "Number of environments to create. Batch size will be equal to this"},
+        {"name": "--num_envs", "type": int, "default": 8, "help": "Number of environments to create. Batch size will be equal to this"},
         {"name": "--seed", "type": int, "default": 42, "help": "Random seed. Overrides config file if provided."},
 
         # train setting
         {"name": "--learning_rate", "type":float, "default": 2.6e-4,
             "help": "the learning rate of the optimizer"},
-        {"name": "--batch_size", "type":int, "default": 2,
+        {"name": "--batch_size", "type":int, "default": 8,
             "help": "batch size of training. Notice that batch_size should be equal to num_envs"},
         {"name": "--num_worker", "type":int, "default": 4,
             "help": "num worker of dataloader"},
         {"name": "--num_epoch", "type":int, "default": 4000,
             "help": "num of epoch"},
-        {"name": "--len_sample", "type":int, "default": 50,
+        {"name": "--len_sample", "type":int, "default": 100,
             "help": "length of a sample"},
         {"name": "--tmp", "type": bool, "default": True, "help": "Set false to officially save the trainning log"},
         {"name": "--gamma", "type":int, "default": 0.5,
@@ -136,13 +136,11 @@ if __name__ == "__main__":
         optimizer.zero_grad()
         
         reset_buf = None
-        reset_quad_state = None
-        
+        now_quad_state = envs.reset(reset_buf=reset_buf, reset_quad_state=None).detach()
+        reset_buf = torch.zeros((args.batch_size,))
+                    
         # train
         for step in range(args.len_sample):
-            
-            now_quad_state = envs.reset(reset_buf=reset_buf, reset_quad_state=reset_quad_state)
-            reset_buf = torch.zeros((args.batch_size,))
             
             image = envs.get_camera_output()
             
@@ -177,6 +175,17 @@ if __name__ == "__main__":
                 optimizer.zero_grad()
                 now_quad_state = now_quad_state.detach()
                 
+            if (step + 1) % 20 == 0:
+                if (step + 1) % 50 == 0:
+                    now_quad_state = envs.reset(reset_buf=reset_buf, reset_quad_state=now_quad_state).detach()
+                    reset_buf = torch.zeros((args.batch_size,))
+                    
+                else:
+                    assert torch.sum(reset_buf) == 0, "Reset buf should be all zero but not"
+                    envs.reset(reset_buf=reset_buf, reset_quad_state=None)
+                    
+                    
+                
             
             if (epoch + 1) % 10 == 0:
                 if (step + 1) % 10 == 0:
@@ -185,10 +194,7 @@ if __name__ == "__main__":
                     print(f"    Step {step}: average loss = {ave_loss}, tar_pos = {tar_pos[0]}, now_pos = {now_quad_state[0, :3]}, action = {action[0]}")
             
             
-            if step and not (step % 20):
-                reset_quad_state = now_quad_state
-            else:
-                reset_quad_state = None
+
             
         # dis_sim_dyn = torch.norm(new_state_dyn[:, :2] - new_state_sim[:, :2], p=2, dim=1)    
         # print("Distance between sim and dynamics:", dis_sim_dyn)
@@ -203,43 +209,45 @@ if __name__ == "__main__":
         
         # validation, no reset_out
         
-        # if (epoch + 1) % 5 == 0:
-        #     model.eval()
+        if (epoch + 1) % 5 == 0:
+            model.eval()
             
-        #     with torch.no_grad():
-        #         envs.step(action)
+            with torch.no_grad():
+                envs.step(action)
                 
-        #         reset_buf = None
-        #         reset_quad_state = None
-                
-        #         for step in range(args.len_sample):
+                reset_buf = None
+                now_quad_state = envs.reset(reset_buf=reset_buf, reset_quad_state=None).detach()
+                reset_buf = torch.zeros((args.batch_size,))
                     
-        #             now_quad_state = envs.reset(reset_buf=reset_buf, reset_quad_state=reset_quad_state)
-        #             reset_buf = torch.zeros((args.batch_size,))
+                for step in range(args.len_sample):
                     
-        #             image = envs.get_camera_output()
+                    image = envs.get_camera_output()
                     
-        #             action = model(now_quad_state[:, 3:], image)
+                    action = model(now_quad_state[:, 3:], image)
                     
-        #             new_state_dyn = dynamic(now_quad_state, action, envs.cfg.sim.dt)
-        #             new_state_sim, tar_state = envs.step(action)
-        #             tar_pos = tar_state[:, :3]
+                    new_state_dyn = dynamic(now_quad_state, action, envs.cfg.sim.dt)
+                    new_state_sim, tar_state = envs.step(action)
+                    tar_pos = tar_state[:, :3]
                     
-        #             now_quad_state = new_state_dyn
-
-        #         scaled_now_quad_pos = torch.max(new_state_dyn, torch.tensor(-10, device=device))
-        #         scaled_now_quad_pos = torch.min(scaled_now_quad_pos, torch.tensor(10, device=device))
-        #         loss1 = torch.norm(scaled_now_quad_pos[:, :2] - tar_pos[:, :2], dim=1, p=2)
-        #         loss2 = torch.abs(scaled_now_quad_pos[:, 2] - 5)
-        #         loss = loss1 + 0.8 * loss2
-        #         ave_loss = torch.sum(loss) / args.batch_size
-        #         dis_hoz = torch.sum(torch.norm(scaled_now_quad_pos[:, :2] - tar_pos[:, :2], dim=1, p=2)) / args.batch_size
-        #         dis_ver = torch.sum(torch.abs(scaled_now_quad_pos[:, 2] - 5)) / args.batch_size
-        #         print(f"Epoch {epoch}: loss = {ave_loss}, ver dis = {dis_ver}, hor dis = {dis_hoz}")
-        #         writer.add_scalar('Loss', ave_loss.item(), epoch)
-        #         writer.add_scalar('Vertical Distance', dis_ver.item(), epoch)
-        #         writer.add_scalar('Horizen Distance', dis_hoz.item(), epoch)
-        #     model.train()
+                    now_quad_state = new_state_dyn
+                    
+                    if (step + 1) % 20 == 0:
+                        assert torch.sum(reset_buf) == 0, "Reset buf should be all zero but not"
+                        envs.reset(reset_buf=reset_buf, reset_quad_state=None)
+                    
+                scaled_now_quad_pos = torch.max(new_state_dyn, torch.tensor(-10, device=device))
+                scaled_now_quad_pos = torch.min(scaled_now_quad_pos, torch.tensor(10, device=device))
+                loss1 = torch.norm(scaled_now_quad_pos[:, :2] - tar_pos[:, :2], dim=1, p=2)
+                loss2 = torch.abs(scaled_now_quad_pos[:, 2] - 5)
+                loss = loss1 + 0.8 * loss2
+                ave_loss = torch.sum(loss) / args.batch_size
+                dis_hoz = torch.sum(torch.norm(scaled_now_quad_pos[:, :2] - tar_pos[:, :2], dim=1, p=2)) / args.batch_size
+                dis_ver = torch.sum(torch.abs(scaled_now_quad_pos[:, 2] - 5)) / args.batch_size
+                print(f"Epoch {epoch}: loss = {ave_loss}, ver dis = {dis_ver}, hor dis = {dis_hoz}")
+                writer.add_scalar('Loss', ave_loss.item(), epoch)
+                writer.add_scalar('Vertical Distance', dis_ver.item(), epoch)
+                writer.add_scalar('Horizen Distance', dis_hoz.item(), epoch)
+            model.train()
         
             
         if (epoch + 1) % 100 == 0:
