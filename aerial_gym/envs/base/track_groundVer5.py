@@ -281,17 +281,20 @@ class TrackGroundVer5(BaseTask):
 
     def reset(self, reset_buf=None, reset_quad_state=None):
         """ Reset all robots"""
-        # if reset_buf is None:
-        #     reset_idx = torch.arange(self.num_envs, device=self.device)
-        # else:
-        #     reset_idx = torch.nonzero(reset_buf).squeeze(-1)
-        # if reset_quad_state is not None:
-        #     self.set_reset_out(reset_quad_state)
+        if reset_buf is None:
+            # print("!!!!!!!!!!!!!!!!!!!!!!!")
+            reset_idx = torch.arange(self.num_envs, device=self.device)
+        else:
+            reset_idx = torch.nonzero(reset_buf).squeeze(-1)
+        if reset_quad_state is not None:
+            self.set_reset_to(reset_quad_state)
         # print(reset_buf)
-        # self.set_reset_idx(reset_idx)
-        self.set_reset_idx(torch.arange(self.num_envs, device=self.device))
+        if len(reset_idx):
+            self.set_reset_idx(reset_idx)
+        # self.set_reset_idx(torch.arange(self.num_envs, device=self.device))
         # print(self.root_states)
-        self.gym.set_actor_root_state_tensor(self.sim, self.root_tensor)
+        if len(reset_idx) or (reset_quad_state is not None):
+            self.gym.set_actor_root_state_tensor(self.sim, self.root_tensor)
         
         return self.get_quad_state()
 
@@ -304,7 +307,7 @@ class TrackGroundVer5(BaseTask):
         self.root_states[env_ids, 0:2] = rand_circle_point(num_resets, 4, self.device)
         # self.root_states[env_ids, 0:2] = 3.0 * torch_rand_float(-1.0, 1.0, (num_resets, 2), self.device)
         # self.root_states[env_ids, 0:2] = 0
-        self.root_states[env_ids, 2] = 5
+        self.root_states[env_ids, 2] = 7
         # reset linevels
         # self.root_states[env_ids, 7:10] = 0.2*torch_rand_float(-1.0, 1.0, (num_resets, 3), self.device)
         self.root_states[env_ids, 7:10] = 0
@@ -468,26 +471,42 @@ class TrackGroundVer5(BaseTask):
         out_space = torch.where(torch.logical_or(obs[:, 2] > 10, obs[:, 2] < 0), ones, out_space)
         return out_space
             
-    def set_reset_out(self, tar_state):
-        not_reset_idx = torch.arange(self.num_envs, device=self.device)
+    def set_reset_to(self, tar_state):
+        reset_idx = torch.arange(self.num_envs, device=self.device)
         tar_state = tar_state.detach()
         tmp_tar_state = torch.zeros((self.num_envs, 13)).to(self.device)
-        tmp_tar_state[not_reset_idx, :3] = tar_state[not_reset_idx, :3]
-        tmp_tar_state[not_reset_idx, 3:7] = self.euler2qua(tar_state[not_reset_idx, 3:6])
-        tmp_tar_state[not_reset_idx, 7:10] = tar_state[not_reset_idx, 6:9]
-        tmp_tar_state[not_reset_idx, 10:13] = tar_state[not_reset_idx, 9:12]
+        tmp_tar_state[reset_idx, :3] = tar_state[reset_idx, :3]
+        tmp_tar_state[reset_idx, 3:7] = self.euler2qua(tar_state[reset_idx, 3:6])
+        tmp_tar_state[reset_idx, 7:10] = tar_state[reset_idx, 6:9]
+        tmp_tar_state[reset_idx, 10:13] = tar_state[reset_idx, 9:12]
 
         self.root_states.copy_(tmp_tar_state)
 
         # self.gym.set_actor_root_state_tensor(self.sim, self.root_tensor)
         
+    def reset_to(self, tar_state):
+        reset_idx = torch.arange(self.num_envs, device=self.device)
+        tar_state = tar_state.detach()
+        tmp_tar_state = torch.zeros((self.num_envs, 13)).to(self.device)
+        tmp_tar_state[reset_idx, :3] = tar_state[reset_idx, :3]
+        tmp_tar_state[reset_idx, 3:7] = self.euler2qua(tar_state[reset_idx, 3:6])
+        tmp_tar_state[reset_idx, 7:10] = tar_state[reset_idx, 6:9]
+        tmp_tar_state[reset_idx, 10:13] = tar_state[reset_idx, 9:12]
+
+        self.root_states.copy_(tmp_tar_state)
+
+        self.gym.set_actor_root_state_tensor(self.sim, self.root_tensor)
+        
     def check_reset_out(self):
-        dep_image = self.get_camera_dep_output()
-        # print(dep_image.shape)
-        sum_dep_image = torch.sum(dep_image, dim=(1, 2))
-        # print("sum_dep_image:", sum_dep_image)
-        out_sight = torch.where(sum_dep_image == 0, torch.tensor(1, device=self.device), torch.tensor(0, device=self.device)).squeeze(-1)
-        # print("out_sight:", out_sight)
+        # dep_image = self.get_camera_dep_output()
+        # # print(dep_image.shape)
+        # sum_dep_image = torch.sum(dep_image, dim=(1, 2))
+        # # print("sum_dep_image:", sum_dep_image)
+        # out_sight = torch.where(sum_dep_image == 0, torch.tensor(1, device=self.device), torch.tensor(0, device=self.device)).squeeze(-1)
+        # out_sight_idx = torch.nonzero(out_sight).squeeze(-1)
+        # # print(len(out_sight))
+        # if len(out_sight_idx):
+        #     print("out_sight:", out_sight_idx)
         
         ones = torch.ones_like(self.reset_buf)
         out_space = torch.zeros_like(self.reset_buf)
@@ -496,12 +515,17 @@ class TrackGroundVer5(BaseTask):
         out_space = torch.where(torch.logical_or(obs[:, 1] > 10, obs[:, 1] < -10), ones, out_space)
         out_space = torch.where(torch.logical_or(obs[:, 2] > 10, obs[:, 2] < 0), ones, out_space)
         out_space = torch.where(torch.any(torch.isnan(obs[:, :3]), dim=1).bool(), ones, out_space)
-        # print("out_space:", out_space)
+        out_space_idx = torch.nonzero(out_space).squeeze(-1)
+        if len(out_space_idx):
+            print("out_space:", out_space_idx)
         
         out_time = self.time_out_buf
-        # print("out_time:", out_time)
+        out_time_idx = torch.nonzero(out_time).squeeze(-1)
+        if len(out_time_idx):
+            print("out_time:", out_time_idx)
         
-        reset_buf = torch.logical_or(out_space, torch.logical_or(out_sight, out_time))
+        # reset_buf = torch.logical_or(out_space, torch.logical_or(out_sight, out_time))
+        reset_buf = torch.logical_or(out_space, out_time)
         reset_idx = torch.nonzero(reset_buf).squeeze(-1)
         
         

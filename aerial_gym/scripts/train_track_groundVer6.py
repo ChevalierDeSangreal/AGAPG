@@ -12,7 +12,6 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.distributions.normal import Normal
 from torch.utils.tensorboard import SummaryWriter
-from torch.utils.data import DataLoader
 import sys
 import pytz
 from datetime import datetime
@@ -22,14 +21,13 @@ sys.path.append('/home/cgv841/wzm/FYP/AGAPG')
 # print(sys.path)
 from aerial_gym.envs import *
 from aerial_gym.utils import task_registry, acch_loss
-from aerial_gym.dataset import QuadGroundDataset
 from aerial_gym.models import TrackGroundModelVer3
 from aerial_gym.envs import LearntDynamics
 # os.path.basename(__file__).rstrip(".py")
 def get_args():
     custom_parameters = [
         {"name": "--task", "type": str, "default": "track_groundVer4", "help": "The name of the task."},
-        {"name": "--experiment_name", "type": str, "default": "exp4_3__true", "help": "Name of the experiment to run or load."},
+        {"name": "--experiment_name", "type": str, "default": "exp6__debug", "help": "Name of the experiment to run or load."},
         {"name": "--headless", "action": "store_true", "default": True, "help": "Force display off at all times"},
         {"name": "--horovod", "action": "store_true", "default": False, "help": "Use horovod for multi-gpu training"},
         {"name": "--num_envs", "type": int, "default": 8, "help": "Number of environments to create. Batch size will be equal to this"},
@@ -55,7 +53,7 @@ def get_args():
         # model setting
         {"name": "--param_path_dynamic", "type":str, "default": '/home/cgv841/wzm/FYP/AGAPG/aerial_gym/param_saved/dynamic_learntVer2.pth',
             "help": "The path to dynamic model parameters"},
-        {"name": "--param_save_path_track_simple", "type":str, "default": '/home/cgv841/wzm/FYP/AGAPG/aerial_gym/param_saved/track_groundVer7.pth',
+        {"name": "--param_save_path_track_simple", "type":str, "default": '/home/cgv841/wzm/FYP/AGAPG/aerial_gym/param_saved/tmp.pth',
             "help": "The path to model parameters"},
         {"name": "--param_load_path_track_simple", "type":str, "default": '/home/cgv841/wzm/FYP/AGAPG/aerial_gym/param_saved/track_groundVer7_saved.pth',
             "help": "The path to model parameters"},

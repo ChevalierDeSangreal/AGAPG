@@ -98,9 +98,9 @@ if __name__ == "__main__":
         writer.add_scalar('Loss', loss.item(), i)
         optimizer.step()
 
-        if (i + 1) % 1000 == 0:
-            print("Saving Model...")
-            envs.trained_dynamics.save_parameters()
+        # if (i + 1) % 1000 == 0:
+        #     print("Saving Model...")
+        #     envs.trained_dynamics.save_parameters()
 
     writer.close()
     print("Training complete!")

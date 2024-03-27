@@ -45,3 +45,13 @@ def velh_loss(quad_state, tar_pos, tar_h):
     
     loss = torch.norm(vel - dis, dim=1, p=2)
     return loss
+
+def velh_lossVer2(quad_state, tar_pos, tar_h, criterion):
+    vel = quad_state[:, 6:9]
+    
+    z_coords = torch.full((quad_state.size(0), 1), tar_h, dtype=quad_state.dtype, device=quad_state.device)
+    tar_pos = torch.cat((tar_pos[:, :2], z_coords), dim=1)
+    dis = (tar_pos - quad_state[:, :3])
+    # dis[:, 2] *= 0.1
+    
+    return criterion(dis, vel)

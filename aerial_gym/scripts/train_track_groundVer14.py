@@ -12,7 +12,6 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.distributions.normal import Normal
 from torch.utils.tensorboard import SummaryWriter
-from torch.utils.data import DataLoader
 import sys
 import pytz
 from datetime import datetime
@@ -22,8 +21,7 @@ from torch.optim import lr_scheduler
 sys.path.append('/home/cgv841/wzm/FYP/AGAPG')
 # print(sys.path)
 from aerial_gym.envs import *
-from aerial_gym.utils import task_registry, velh_loss
-from aerial_gym.dataset import QuadGroundDataset
+from aerial_gym.utils import task_registry, velh_loss, velh_lossVer2
 from aerial_gym.models import TrackGroundModelVer4
 from aerial_gym.envs import LearntDynamics
 # os.path.basename(__file__).rstrip(".py")
@@ -34,10 +32,10 @@ def get_args():
         {"name": "--headless", "action": "store_true", "default": True, "help": "Force display off at all times"},
         {"name": "--horovod", "action": "store_true", "default": False, "help": "Use horovod for multi-gpu training"},
         {"name": "--num_envs", "type": int, "default": 8, "help": "Number of environments to create. Batch size will be equal to this"},
-        {"name": "--seed", "type": int, "default": 42, "help": "Random seed. Overrides config file if provided."},
+        {"name": "--seed", "type": int, "default": 81, "help": "Random seed. Overrides config file if provided."},
 
         # train setting
-        {"name": "--learning_rate", "type":float, "default": 2.6e-4,
+        {"name": "--learning_rate", "type":float, "default": 2.6e-6,
             "help": "the learning rate of the optimizer"},
         {"name": "--batch_size", "type":int, "default": 8,
             "help": "batch size of training. Notice that batch_size should be equal to num_envs"},
@@ -45,7 +43,7 @@ def get_args():
             "help": "num worker of dataloader"},
         {"name": "--num_epoch", "type":int, "default": 4000,
             "help": "num of epoch"},
-        {"name": "--len_sample", "type":int, "default": 150,
+        {"name": "--len_sample", "type":int, "default": 100,
             "help": "length of a sample"},
         {"name": "--tmp", "type": bool, "default": True, "help": "Set false to officially save the trainning log"},
         {"name": "--gamma", "type":int, "default": 0.5,
@@ -56,7 +54,7 @@ def get_args():
         # model setting
         {"name": "--param_path_dynamic", "type":str, "default": '/home/cgv841/wzm/FYP/AGAPG/aerial_gym/param_saved/dynamic_learntVer2.pth',
             "help": "The path to dynamic model parameters"},
-        {"name": "--param_save_path_track_simple", "type":str, "default": '/home/cgv841/wzm/FYP/AGAPG/aerial_gym/param_saved/track_groundVer15.pth',
+        {"name": "--param_save_path_track_simple", "type":str, "default": '/home/cgv841/wzm/FYP/AGAPG/aerial_gym/param_saved/track_groundVer17.pth',
             "help": "The path to model parameters"},
         {"name": "--param_load_path_track_simple", "type":str, "default": '/home/cgv841/wzm/FYP/AGAPG/aerial_gym/param_saved/track_groundVer9__len_sample_50.pth',
             "help": "The path to model parameters"},
@@ -146,40 +144,56 @@ if __name__ == "__main__":
             image = envs.get_camera_output()
             
             action = model(now_quad_state[:, 3:], image)
+            if torch.isnan(action).any():
+                print("Nan detected!!!")
+                exit(0)
             
             new_state_dyn = dynamic(now_quad_state, action, envs.cfg.sim.dt)
             
             new_state_sim, tar_state = envs.step(action)
-            tar_pos = tar_state[:, :3]
+            tar_pos = tar_state[:, :3].detach()
             
             now_quad_state = new_state_dyn
 
-            reset_buf, reset_idx = envs.check_reset_out()
-            if len(reset_idx):
-                print(f"On step {step}, reset {reset_idx}")
-            not_reset_buf = torch.logical_not(reset_buf)
-
-            loss = velh_loss(now_quad_state, tar_pos, 5)
-            loss.backward(not_reset_buf)
-            ave_loss = torch.sum(torch.mul(not_reset_buf, loss)) / (args.batch_size - len(reset_idx))
+            # reset_buf, reset_idx = envs.check_reset_out()
+            # if len(reset_idx):
+            #     print(f"On step {step}, reset {reset_idx}")
+            # not_reset_buf = torch.logical_not(reset_buf)
+            # assert len(torch.nonzero(not_reset_buf).squeeze(-1)), "All"
+            # loss = velh_loss(now_quad_state, tar_pos, 7)
+            # loss.backward(not_reset_buf)
+            # ave_loss = torch.sum(torch.mul(not_reset_buf, loss)) / (args.batch_size - len(reset_idx))
+            loss = velh_lossVer2(now_quad_state, tar_pos, 7, criterion)
+            loss.backward()
 
             max_norm = 1.0  # 设置梯度裁剪的阈值
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
             optimizer.step()
             optimizer.zero_grad()
             
-            if (step + 1) % 20 == 0:
+            # if (step + 1) % 25 == 0:
+            #     reset_quad_state = now_quad_state
+            # else:
+            #     reset_quad_state = None
+                
+            if (epoch + 1) % 10 == 0:
+                if (step + 1) % 10 == 0:
+                    print(f"    Step {step}: average loss = {loss}, tar_pos = {tar_pos[0]}, now_pos = {now_quad_state[0, :3]}, action = {action[0]}")
+            
+            # print("Before state:", now_quad_state[0])
+            
+            # now_quad_state = envs.reset(reset_buf=reset_buf, reset_quad_state=None).detach()
+            # print("After state:", now_quad_state[0])
+            # reset_buf = torch.zeros((args.batch_size,))
+            
+            if (step + 1) % 25 == 0:
                 reset_quad_state = now_quad_state
             else:
                 reset_quad_state = None
-            
-            now_quad_state = envs.reset(reset_buf=reset_buf, reset_quad_state=now_quad_state).detach()
-            reset_buf = torch.zeros((args.batch_size,))
-            
-            if (epoch + 1) % 10 == 0:
-                if (step + 1) % 10 == 0:
-                    print(f"    Step {step}: average loss = {ave_loss}, tar_pos = {tar_pos[6]}, now_pos = {now_quad_state[6, :3]}, action = {action[6]}")
-            
+                
+            envs.reset(reset_buf=reset_buf, reset_quad_state=reset_quad_state).detach()
+            now_quad_state = now_quad_state.detach()
+
             
 
             
@@ -229,10 +243,10 @@ if __name__ == "__main__":
 
                 scaled_now_quad_pos = torch.max(new_state_dyn, torch.tensor(-10, device=device))
                 scaled_now_quad_pos = torch.min(scaled_now_quad_pos, torch.tensor(10, device=device))
-                loss = velh_loss(scaled_now_quad_pos, tar_pos, 5)
+                loss = velh_loss(scaled_now_quad_pos, tar_pos, 7)
                 ave_loss = torch.sum(loss) / args.batch_size
                 dis_hoz = torch.sum(torch.norm(scaled_now_quad_pos[:, :2] - tar_pos[:, :2], dim=1, p=2)) / args.batch_size
-                dis_ver = torch.sum(torch.abs(scaled_now_quad_pos[:, 2] - 5)) / args.batch_size
+                dis_ver = torch.sum(torch.abs(scaled_now_quad_pos[:, 2] - 7)) / args.batch_size
                 print(f"Epoch {epoch}: Average loss = {ave_loss}, ver dis = {dis_ver}, hor dis = {dis_hoz}")
                 writer.add_scalar('Loss', ave_loss.item(), epoch)
                 writer.add_scalar('Vertical Distance', dis_ver.item(), epoch)
