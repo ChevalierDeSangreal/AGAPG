@@ -28,14 +28,14 @@ from aerial_gym.envs import IsaacGymDynamics
 def get_args():
     custom_parameters = [
         {"name": "--task", "type": str, "default": "track_groundVer7", "help": "The name of the task."},
-        {"name": "--experiment_name", "type": str, "default": "exp7__chart__pretrain", "help": "Name of the experiment to run or load."},
+        {"name": "--experiment_name", "type": str, "default": "exp7__chart__nopretrain", "help": "Name of the experiment to run or load."},
         {"name": "--headless", "action": "store_true", "default": True, "help": "Force display off at all times"},
         {"name": "--horovod", "action": "store_true", "default": False, "help": "Use horovod for multi-gpu training"},
         {"name": "--num_envs", "type": int, "default": 8, "help": "Number of environments to create. Batch size will be equal to this"},
         {"name": "--seed", "type": int, "default": 42, "help": "Random seed. Overrides config file if provided."},
 
         # train setting
-        {"name": "--learning_rate", "type":float, "default": 5.6e-6,
+        {"name": "--learning_rate", "type":float, "default": 5.6e-5,
             "help": "the learning rate of the optimizer"},
         {"name": "--batch_size", "type":int, "default": 8,
             "help": "batch size of training. Notice that batch_size should be equal to num_envs"},
@@ -142,7 +142,7 @@ if __name__ == "__main__":
         sum_loss = 0
         num_loss = 0
         
-                    
+        tot_dis = 0
         # train
         for step in range(args.len_sample):
             
@@ -164,6 +164,14 @@ if __name__ == "__main__":
             
             
             now_quad_state = new_state_dyn
+            
+            if (epoch + 1) % 5 == 0:
+                tar_pos[:, 2] = 7
+                if step > args.len_sample - 100:
+                    scaled_now_quad_pos = torch.max(new_state_dyn, torch.tensor(-10, device=device))
+                    scaled_now_quad_pos = torch.min(scaled_now_quad_pos, torch.tensor(10, device=device))
+                    dis = torch.sum(torch.norm(tar_pos - now_quad_state[:, :3], p=2, dim=1)) / args.batch_size
+                    tot_dis += dis
 
             if (step + 1) % 50 == 0:
                 reset_buf, reset_idx = envs.check_reset_out()
@@ -180,6 +188,8 @@ if __name__ == "__main__":
                 ave_loss = torch.sum(torch.mul(not_reset_buf, loss)) / (args.batch_size - len(reset_idx))
                 # loss = velh_lossVer2(now_quad_state, tar_pos, 7, criterion)
                 # loss.backward()
+                sum_loss += ave_loss
+                num_loss += args.batch_size - len(reset_idx)
 
                 # max_norm = 1.0  # 设置梯度裁剪的阈值
                 # torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
@@ -229,6 +239,7 @@ if __name__ == "__main__":
         ave_loss_h = torch.sum(loss_h) / args.batch_size
         ave_loss = torch.sum(loss) / args.batch_size
         
+        writer.add_scalar('Ave Loss', sum_loss / num_loss, epoch)
         writer.add_scalar('Loss', ave_loss.item(), epoch)
         writer.add_scalar('Loss Direction', ave_loss_direction.item(), epoch)
         writer.add_scalar('Loss Speed', ave_loss_speed.item(), epoch)
@@ -237,7 +248,9 @@ if __name__ == "__main__":
         writer.add_scalar('Number Reset', num_reset, epoch)
             # writer.add_scalar('Number Reset', len(total_not_reset_idx), epoch)
             # total_not_reset_buf = torch.ones((args.batch_size,))
-            
+        if (epoch + 1) % 5 == 0:
+            tot_dis /= 100
+            writer.add_scalar('Val Average Distance', tot_dis, epoch)
             
 
         print(f"Epoch {epoch}, Ave loss = {ave_loss}, num reset = {num_reset}")
@@ -260,6 +273,9 @@ if __name__ == "__main__":
         # if (epoch + 1) % 5 == 0:
         #     model.eval()
             
+        #     num_reset = 0
+        #     tot_dis = 0
+            
         #     with torch.no_grad():
         #         envs.step(action)
                 
@@ -277,6 +293,7 @@ if __name__ == "__main__":
         #             new_state_dyn = dynamic(now_quad_state, action, envs.cfg.sim.dt)
         #             new_state_sim, tar_state = envs.step(action)
         #             tar_pos = tar_state[:, :3]
+        #             tar_pos[:, :2] = 7
                     
         #             now_quad_state = new_state_dyn
         #             # if (step + 1) % 20 == 0:
@@ -289,31 +306,35 @@ if __name__ == "__main__":
         #             # now_quad_state = envs.reset(reset_buf=reset_buf, reset_quad_state=reset_quad_state).detach()
         #             # reset_buf = torch.zeros((args.batch_size,))
                     
-
-        #         scaled_now_quad_pos = torch.max(new_state_dyn, torch.tensor(-10, device=device))
-        #         scaled_now_quad_pos = torch.min(scaled_now_quad_pos, torch.tensor(10, device=device))
+        #             if step > args.len_sample - 100:
+        #                 scaled_now_quad_pos = torch.max(new_state_dyn, torch.tensor(-10, device=device))
+        #                 scaled_now_quad_pos = torch.min(scaled_now_quad_pos, torch.tensor(10, device=device))
+        #                 dis = torch.sum(torch.norm(tar_pos - now_quad_state[:, :3], p=2, dim=1)) / args.batch_size
+        #                 tot_dis += dis
         #         # loss, loss_direction, loss_speed = velh_lossVer3(now_quad_state, tar_pos, 7)
-        #         loss, loss_direction, loss_speed, loss_ori, loss_h = velh_lossVer5(now_quad_state, tar_pos, 7, tar_ori)
-        #         ave_loss_direction = torch.sum(loss_direction) / args.batch_size
-        #         ave_loss_speed = torch.sum(loss_speed) / args.batch_size
-        #         ave_loss_ori = torch.sum(loss_ori) / args.batch_size
-        #         ave_loss_h = torch.sum(loss_h) / args.batch_size
-        #         ave_loss = torch.sum(loss) / args.batch_size
-        #         dis_hoz = torch.sum(torch.norm(scaled_now_quad_pos[:, :2] - tar_pos[:, :2], dim=1, p=2)) / args.batch_size
-        #         dis_ver = torch.sum(torch.abs(scaled_now_quad_pos[:, 2] - 7)) / args.batch_size
-        #         print(f"Epoch {epoch}: Average loss = {ave_loss}, ver dis = {dis_ver}, hor dis = {dis_hoz}")
-        #         writer.add_scalar('Loss', ave_loss.item(), epoch)
-        #         writer.add_scalar('Loss Direction', ave_loss_direction.item(), epoch)
-        #         writer.add_scalar('Loss Speed', ave_loss_speed.item(), epoch)
-        #         writer.add_scalar('Loss Orientation', ave_loss_ori.item(), epoch)
-        #         writer.add_scalar('Loss Height', ave_loss_h.item(), epoch)
-        #         writer.add_scalar('Vertical Distance', dis_ver.item(), epoch)
-        #         writer.add_scalar('Horizen Distance', dis_hoz.item(), epoch)
+        #         # loss, loss_direction, loss_speed, loss_ori, loss_h = velh_lossVer5(now_quad_state, tar_pos, 7, tar_ori)
+        #         # ave_loss_direction = torch.sum(loss_direction) / args.batch_size
+        #         # ave_loss_speed = torch.sum(loss_speed) / args.batch_size
+        #         # ave_loss_ori = torch.sum(loss_ori) / args.batch_size
+        #         # ave_loss_h = torch.sum(loss_h) / args.batch_size
+        #         # ave_loss = torch.sum(loss) / args.batch_size
+        #         # dis_hoz = torch.sum(torch.norm(scaled_now_quad_pos[:, :2] - tar_pos[:, :2], dim=1, p=2)) / args.batch_size
+        #         # dis_ver = torch.sum(torch.abs(scaled_now_quad_pos[:, 2] - 7)) / args.batch_size
+        #         # print(f"Epoch {epoch}: Average loss = {ave_loss}, ver dis = {dis_ver}, hor dis = {dis_hoz}")
+        #         # writer.add_scalar('Loss', ave_loss.item(), epoch)
+        #         # writer.add_scalar('Loss Direction', ave_loss_direction.item(), epoch)
+        #         # writer.add_scalar('Loss Speed', ave_loss_speed.item(), epoch)
+        #         # writer.add_scalar('Loss Orientation', ave_loss_ori.item(), epoch)
+        #         # writer.add_scalar('Loss Height', ave_loss_h.item(), epoch)
+        #         # writer.add_scalar('Vertical Distance', dis_ver.item(), epoch)
+        #         # writer.add_scalar('Horizen Distance', dis_hoz.item(), epoch)
+        #         tot_dis /= 100
+        #         writer.add_scalar('Val Average Distance', tot_dis.item(), epoch)
         #     model.train()
         
-        # if (epoch + 1) % 100 == 0:
-        #     print("Saving Model...")
-        #     torch.save(model.state_dict(), args.param_save_path_track_simple)
+        if (epoch + 1) % 100 == 0:
+            print("Saving Model...")
+            torch.save(model.state_dict(), args.param_save_path_track_simple)
             # break
             # dynamic.save_parameters()
     
