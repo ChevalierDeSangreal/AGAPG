@@ -28,7 +28,7 @@ from aerial_gym.envs import IsaacGymDynamics
 def get_args():
     custom_parameters = [
         {"name": "--task", "type": str, "default": "track_groundVer7", "help": "The name of the task."},
-        {"name": "--experiment_name", "type": str, "default": "exp7__chart__nopretrain", "help": "Name of the experiment to run or load."},
+        {"name": "--experiment_name", "type": str, "default": "exp7__chart__pretrain", "help": "Name of the experiment to run or load."},
         {"name": "--headless", "action": "store_true", "default": True, "help": "Force display off at all times"},
         {"name": "--horovod", "action": "store_true", "default": False, "help": "Use horovod for multi-gpu training"},
         {"name": "--num_envs", "type": int, "default": 8, "help": "Number of environments to create. Batch size will be equal to this"},
