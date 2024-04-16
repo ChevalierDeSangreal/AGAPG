@@ -41,7 +41,7 @@ def get_args():
             "help": "batch size of training. Notice that batch_size should be equal to num_envs"},
         {"name": "--num_worker", "type":int, "default": 4,
             "help": "num worker of dataloader"},
-        {"name": "--num_epoch", "type":int, "default": 4000,
+        {"name": "--num_epoch", "type":int, "default": 1000,
             "help": "num of epoch"},
         {"name": "--len_sample", "type":int, "default": 500,
             "help": "length of a sample"},

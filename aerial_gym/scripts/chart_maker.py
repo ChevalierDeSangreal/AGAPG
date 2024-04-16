@@ -2,47 +2,52 @@ from tensorboard.backend.event_processing import event_accumulator
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-
+from collections import defaultdict
 def main_test():
-    ea = event_accumulator.EventAccumulator('/home/cgv841/wzm/FYP/AGAPG/paper_data/main_test_succ__thres0.5') 
+    ea = event_accumulator.EventAccumulator('/home/cgv841/wzm/FYP/AGAPG/paper_data/tmp_Test__test_main') 
     ea.Reload()
     
     batch_size = 8
-    hor_dises = []
-    ver_dises = []
-    tot_losses = []
-    dir_losses = []
-    speed_losses = []
-    ori_losses = []
-    speeds = []
+    
+    data = defaultdict(list)
     
     for i in range(batch_size):
-        hor_dis = [j.value for j in ea.scalars.Items(f'Horizon Distance{i}')]
-        ver_dis = [j.value for j in ea.scalars.Items(f'Vertical Distance{i}')]
-        tot_loss = [j.value for j in ea.scalars.Items(f'Total Loss{i}')]
-        dir_loss = [j.value for j in ea.scalars.Items(f'Direction Loss{i}')]
-        speed_loss = [j.value for j in ea.scalars.Items(f'Speed Loss{i}')]
-        ori_loss = [j.value for j in ea.scalars.Items(f'Orientation Loss{i}')]
-        speed = [j.value for j in ea.scalars.Items(f'Speed{i}')]
-        x = [j.step for j in ea.scalars.Items(f'Horizon Distance{i}')]
-        
-        hor_dises.append(hor_dis)
-        ver_dises.append(ver_dis)
-        tot_losses.append(tot_loss)
-        dir_losses.append(dir_loss)
-        speed_losses.append(speed_loss)
-        ori_losses.append(ori_loss)
-        speeds.append(speed)
-        
+        for data_name in ['Horizon Distance', 'Vertical Distance', 'Total Loss', 'Direction Loss', 'Speed Loss', 'Orientation Loss', 'Speed']:
+            data_values = [j.value for j in ea.scalars.Items(f'{data_name}{i}')]
+            data[data_name].append(data_values)
     
+    # Create a plot for each type of data
+    for key, val in data.items():
+        plt.figure(figsize=(12, 8))
+        for idx, batch_data in enumerate(val):
+            if idx == 0:
+                plt.plot(batch_data, label=f'{key} {idx}', alpha=0.3)  # Original data with moderate transparency
+                average_curve = np.array(batch_data)
+            else:
+                plt.plot(batch_data, label=f'{key} {idx}', alpha=0.3)  # Original data with low transparency
+                average_curve += np.array(batch_data)
+        average_curve /= len(val)  # Calculate the average curve
+        plt.plot(average_curve, label=f'{key} (Average)', linewidth=2, color='#0000CD', alpha=0.8)  # Plot the average curve with higher transparency
+        plt.legend()
+        plt.xlabel('Step')
+        plt.ylabel('Value')
+        plt.title(f'{key} Data')
+        plt.savefig(f'/home/cgv841/wzm/FYP/AGAPG/aerial_gym/scripts/charts_output/test_main/{key}_plot.png')  # Save the plot to a file with the key name
+        plt.close()
         
-        
-        
-        
-    
-        
-        
-        
+def main_trainVer2():
+    #加载日志数据
+    ea = event_accumulator.EventAccumulator('/home/cgv841/wzm/FYP/AGAPG/paper_data/main_train__pretrain__42') 
+    ea.Reload()
+    print(ea.scalars.Keys())
+
+    # loss_total = ea.scalars.Items('Loss')
+    # loss_direction = ea.scalars.Items('Loss Direction')
+    # loss_orientation = ea.scalars.Items("Loss Orientation")
+    # loss_height = ea.scalars.Items("Loss Height")
+    num_reset = ea.scalars.Items("Number Reset")
+    average_loss = ea.scalars.Items('Ave Loss')
+    average_hor_dis = ea.scalars.Items('Val Average Distance')    
     
 
 def main_train():
@@ -85,4 +90,4 @@ def main_train():
 
 if __name__ == "__main__":
     # main_train()
-    main_test()
+    main_trainVer2()

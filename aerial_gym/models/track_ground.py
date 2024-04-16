@@ -305,7 +305,7 @@ class TrackGroundModelVer7(nn.Module):
         torch.nn.init.kaiming_normal_(self.hidden_layer5.weight)
         torch.nn.init.kaiming_normal_(self.output_layer.weight)
 
-        self.resnet = models.resnet18(pretrained=False)
+        self.resnet = models.resnet18(pretrained=True)
         in_features = self.resnet.fc.in_features
         self.resnet.fc = nn.Linear(in_features, 4)
         # self.tanh = nn.Tanh().to(device)
