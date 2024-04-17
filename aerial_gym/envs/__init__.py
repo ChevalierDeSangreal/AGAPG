@@ -21,6 +21,7 @@ from .base.track_groundVer6 import TrackGroundVer6
 from .base.track_groundVer7 import TrackGroundVer7
 from .base.track_groundVer8 import TrackGroundVer8
 from .base.track_groundVer9 import TrackGroundVer9
+from .base.track_groundVer10 import TrackGroundVer10
 from aerial_gym.utils.task_registry import task_registry
 
 # task_registry.register( "quad", AerialRobot, AerialRobotCfg())
@@ -37,3 +38,4 @@ task_registry.register( "track_groundVer6", TrackGroundVer6, TrackGroundCfg())
 task_registry.register( "track_groundVer7", TrackGroundVer7, TrackGroundCfg())
 task_registry.register( "track_groundVer8", TrackGroundVer8, TrackGroundCfg())
 task_registry.register( "track_groundVer9", TrackGroundVer9, TrackGroundCfg())
+task_registry.register( "track_groundVer10", TrackGroundVer10, TrackGroundCfg())

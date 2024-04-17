@@ -30,7 +30,7 @@ from aerial_gym.envs import IsaacGymDynamics
 def get_args():
     custom_parameters = [
         {"name": "--task", "type": str, "default": "track_groundVer7", "help": "The name of the task."},
-        {"name": "--experiment_name", "type": str, "default": "main_test_succ__thr2", "help": "Name of the experiment to run or load."},
+        {"name": "--experiment_name", "type": str, "default": "test_succ__thr2__600in1000", "help": "Name of the experiment to run or load."},
         {"name": "--headless", "action": "store_true", "default": True, "help": "Force display off at all times"},
         {"name": "--horovod", "action": "store_true", "default": False, "help": "Use horovod for multi-gpu training"},
         {"name": "--num_envs", "type": int, "default": 8, "help": "Number of environments to create. Batch size will be equal to this"},
@@ -60,7 +60,7 @@ def get_args():
         {"name": "--len_sample", "type":int, "default": 1000, "help": "length of a sample"},
         
         {"name": "--num_sample", "type":int, "default": 512, "help": "the total number of sample"},
-        {"name": "--threshold", "type":float, "default": 3, "help": "the radius to judge in last 100 step"},
+        {"name": "--threshold", "type":float, "default": 2, "help": "the radius to judge in last 100 step"},
         
         ]
 

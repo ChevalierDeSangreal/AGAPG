@@ -3,10 +3,191 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from collections import defaultdict
-def main_test():
-    ea = event_accumulator.EventAccumulator('/home/cgv841/wzm/FYP/AGAPG/paper_data/tmp_Test__test_main') 
+
+def main_test_height():
+    """
+    In order to compare changed test with original test.
+    """
+    # print("??????????")
+    ea = event_accumulator.EventAccumulator('/home/cgv841/wzm/FYP/AGAPG/paper_data/test_height__small_tar') 
     ea.Reload()
+    # print(ea.scalars.Keys())
+    # print("??????????")
+    batch_size = 8
     
+    data = defaultdict(list)
+    
+    for i in range(batch_size):
+        for data_name in ['Horizon Distance', 'Vertical Distance', 'Total Loss', 'Direction Loss', 'Speed Loss', 'Orientation Loss', 'Speed']:
+            data_values = [j.value for j in ea.scalars.Items(f'{data_name}{i}')]
+            data[data_name].append(data_values)
+            
+            
+    ea2 = event_accumulator.EventAccumulator('/home/cgv841/wzm/FYP/AGAPG/paper_data/test_main') 
+    ea2.Reload()
+    
+    data2 = defaultdict(list)
+    
+    for i in range(batch_size):
+        for data_name in ['Horizon Distance', 'Vertical Distance', 'Total Loss', 'Direction Loss', 'Speed Loss', 'Orientation Loss', 'Speed']:
+            data_values = [j.value for j in ea2.scalars.Items(f'{data_name}{i}')]
+            data2[data_name].append(data_values)
+    
+    # Create a plot for each type of data
+    for key, val in data.items():
+        plt.figure(figsize=(12, 8))
+        for idx, batch_data in enumerate(val):
+            if idx == 0:
+                plt.plot(batch_data, label=f'{key} {idx}', alpha=0.3)  # Original data with moderate transparency
+                average_curve = np.array(batch_data)
+            else:
+                plt.plot(batch_data, label=f'{key} {idx}', alpha=0.3)  # Original data with low transparency
+                average_curve += np.array(batch_data)
+                
+        val2 = data2[key]
+        for idx, batch_data in enumerate(val2):
+            if idx == 0:
+                average_curve2 = np.array(batch_data)
+            else:
+                average_curve2 += np.array(batch_data)
+                
+        average_curve /= len(val)  # Calculate the average curve
+        average_curve2 /= len(val)  # Calculate the average curve
+        plt.plot(average_curve, label=f'Ground Changed {key} (Average)', linewidth=2, color='#0000CD', alpha=0.8)  # Plot the average curve with higher transparency
+        plt.plot(average_curve2, label=f'Standard {key} (Average)', linewidth=2, color='#FF0000', alpha=0.8)  # Plot the average curve with higher transparency
+        
+        plt.legend()
+        plt.xlabel('Step')
+        plt.ylabel('Value')
+        plt.title(f'{key} Data')
+        plt.savefig(f'/home/cgv841/wzm/FYP/AGAPG/aerial_gym/scripts/charts_output/test_height__small_tar/{key}_plot.png')  # Save the plot to a file with the key name
+        plt.close()
+
+
+def main_test_moving():
+    """
+    In order to compare changed test with original test.
+    """
+    # print("??????????")
+    ea = event_accumulator.EventAccumulator('/home/cgv841/wzm/FYP/AGAPG/paper_data/test_moving__2') 
+    ea.Reload()
+    # print(ea.scalars.Keys())
+    # print("??????????")
+    batch_size = 8
+    
+    data = defaultdict(list)
+    
+    for i in range(batch_size):
+        for data_name in ['Horizon Distance', 'Vertical Distance', 'Total Loss', 'Direction Loss', 'Speed Loss', 'Orientation Loss', 'Speed']:
+            data_values = [j.value for j in ea.scalars.Items(f'{data_name}{i}')]
+            data[data_name].append(data_values)
+            
+            
+    ea2 = event_accumulator.EventAccumulator('/home/cgv841/wzm/FYP/AGAPG/paper_data/test_main') 
+    ea2.Reload()
+    
+    data2 = defaultdict(list)
+    
+    for i in range(batch_size):
+        for data_name in ['Horizon Distance', 'Vertical Distance', 'Total Loss', 'Direction Loss', 'Speed Loss', 'Orientation Loss', 'Speed']:
+            data_values = [j.value for j in ea2.scalars.Items(f'{data_name}{i}')]
+            data2[data_name].append(data_values)
+    
+    # Create a plot for each type of data
+    for key, val in data.items():
+        plt.figure(figsize=(12, 8))
+        for idx, batch_data in enumerate(val):
+            if idx == 0:
+                plt.plot(batch_data, label=f'{key} {idx}', alpha=0.3)  # Original data with moderate transparency
+                average_curve = np.array(batch_data)
+            else:
+                plt.plot(batch_data, label=f'{key} {idx}', alpha=0.3)  # Original data with low transparency
+                average_curve += np.array(batch_data)
+                
+        val2 = data2[key]
+        for idx, batch_data in enumerate(val2):
+            if idx == 0:
+                average_curve2 = np.array(batch_data)
+            else:
+                average_curve2 += np.array(batch_data)
+                
+        average_curve /= len(val)  # Calculate the average curve
+        average_curve2 /= len(val)  # Calculate the average curve
+        plt.plot(average_curve, label=f'Ground Changed {key} (Average)', linewidth=2, color='#0000CD', alpha=0.8)  # Plot the average curve with higher transparency
+        plt.plot(average_curve2, label=f'Standard {key} (Average)', linewidth=2, color='#FF0000', alpha=0.8)  # Plot the average curve with higher transparency
+        
+        plt.legend()
+        plt.xlabel('Step')
+        plt.ylabel('Value')
+        plt.title(f'{key} Data')
+        plt.savefig(f'/home/cgv841/wzm/FYP/AGAPG/aerial_gym/scripts/charts_output/test_moving__2/{key}_plot.png')  # Save the plot to a file with the key name
+        plt.close()
+
+def main_test_ground():
+    """
+    In order to compare changed test with original test.
+    """
+    # print("??????????")
+    ea = event_accumulator.EventAccumulator('/home/cgv841/wzm/FYP/AGAPG/paper_data/test_ground') 
+    ea.Reload()
+    # print(ea.scalars.Keys())
+    # print("??????????")
+    batch_size = 8
+    
+    data = defaultdict(list)
+    
+    for i in range(batch_size):
+        for data_name in ['Horizon Distance', 'Vertical Distance', 'Total Loss', 'Direction Loss', 'Speed Loss', 'Orientation Loss', 'Speed']:
+            data_values = [j.value for j in ea.scalars.Items(f'{data_name}{i}')]
+            data[data_name].append(data_values)
+            
+            
+    ea2 = event_accumulator.EventAccumulator('/home/cgv841/wzm/FYP/AGAPG/paper_data/test_main') 
+    ea2.Reload()
+    
+    data2 = defaultdict(list)
+    
+    for i in range(batch_size):
+        for data_name in ['Horizon Distance', 'Vertical Distance', 'Total Loss', 'Direction Loss', 'Speed Loss', 'Orientation Loss', 'Speed']:
+            data_values = [j.value for j in ea2.scalars.Items(f'{data_name}{i}')]
+            data2[data_name].append(data_values)
+    
+    # Create a plot for each type of data
+    for key, val in data.items():
+        plt.figure(figsize=(12, 8))
+        for idx, batch_data in enumerate(val):
+            if idx == 0:
+                plt.plot(batch_data, label=f'{key} {idx}', alpha=0.3)  # Original data with moderate transparency
+                average_curve = np.array(batch_data)
+            else:
+                plt.plot(batch_data, label=f'{key} {idx}', alpha=0.3)  # Original data with low transparency
+                average_curve += np.array(batch_data)
+                
+        val2 = data2[key]
+        for idx, batch_data in enumerate(val2):
+            if idx == 0:
+                average_curve2 = np.array(batch_data)
+            else:
+                average_curve2 += np.array(batch_data)
+                
+        average_curve /= len(val)  # Calculate the average curve
+        average_curve2 /= len(val)  # Calculate the average curve
+        plt.plot(average_curve, label=f'Ground Changed {key} (Average)', linewidth=2, color='#0000CD', alpha=0.8)  # Plot the average curve with higher transparency
+        plt.plot(average_curve2, label=f'Standard {key} (Average)', linewidth=2, color='#FF0000', alpha=0.8)  # Plot the average curve with higher transparency
+        
+        plt.legend()
+        plt.xlabel('Step')
+        plt.ylabel('Value')
+        plt.title(f'{key} Data')
+        plt.savefig(f'/home/cgv841/wzm/FYP/AGAPG/aerial_gym/scripts/charts_output/test_ground/{key}_plot.png')  # Save the plot to a file with the key name
+        plt.close()
+
+def main_test():
+    # print("??????????")
+    ea = event_accumulator.EventAccumulator('/home/cgv841/wzm/FYP/AGAPG/paper_data/test_ground') 
+    ea.Reload()
+    # print(ea.scalars.Keys())
+    # print("??????????")
     batch_size = 8
     
     data = defaultdict(list)
@@ -32,8 +213,9 @@ def main_test():
         plt.xlabel('Step')
         plt.ylabel('Value')
         plt.title(f'{key} Data')
-        plt.savefig(f'/home/cgv841/wzm/FYP/AGAPG/aerial_gym/scripts/charts_output/test_main/{key}_plot.png')  # Save the plot to a file with the key name
+        plt.savefig(f'/home/cgv841/wzm/FYP/AGAPG/aerial_gym/scripts/charts_output/test_ground/{key}_plot.png')  # Save the plot to a file with the key name
         plt.close()
+
         
 def main_trainVer2():
     #加载日志数据
@@ -90,4 +272,6 @@ def main_train():
 
 if __name__ == "__main__":
     # main_train()
-    main_trainVer2()
+    # main_trainVer2()
+    # main_test_moving()
+    main_test_height()

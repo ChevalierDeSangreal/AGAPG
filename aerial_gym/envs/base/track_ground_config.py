@@ -61,8 +61,8 @@ class TrackGroundCfg(BaseConfig):
         armature = 0.001
 
     class tar_asset:
-        file = "{AERIAL_GYM_ROOT_DIR}/resources/robots/quad/model.urdf"
-        name = "target"  # actor name
+        file = "{AERIAL_GYM_ROOT_DIR}/resources/robots/quad/tar.urdf"
+        name = "target"  # actor nametar
         base_link_name = "base_link"
         foot_name = "None" # name of the feet bodies, used to index body state and contact force tensors
         penalize_contacts_on = []
