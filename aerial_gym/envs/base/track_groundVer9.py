@@ -101,7 +101,7 @@ class TrackGroundVer9(BaseTask):
             
             self.gym.viewer_camera_look_at(self.viewer, None, cam_pos, cam_target)
         
-        self.tar_dir = rand_circle_point(self.num_envs, 2, self.device)
+        self.tar_dir = rand_circle_point(self.num_envs, 1, self.device)
 
 
     def create_sim(self):
@@ -259,7 +259,7 @@ class TrackGroundVer9(BaseTask):
         self.tar_root_states[:, 10:13] = 0
         # reset quats
         self.tar_root_states[:, 3:7] = 0
-        self.tar_root_states[:, 6] = 1.0
+        self.tar_root_states[:, 6] = 2
 
         self.render(sync_frame_time=False)
         

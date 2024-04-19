@@ -309,8 +309,8 @@ class TrackGroundVer10(BaseTask):
         self.root_states[env_ids, 0:2] = rand_circle_point(num_resets, 5, self.device)
         # self.root_states[env_ids, 0:2] = 3.0 * torch_rand_float(-1.0, 1.0, (num_resets, 2), self.device)
         # self.root_states[env_ids, 0:2] = 0
-        # self.root_states[env_ids, 2] = 5.5
-        self.root_states[env_ids, 2] = 7
+        self.root_states[env_ids, 2] = 5.5
+        # self.root_states[env_ids, 2] = 7
         # reset linevels
         # self.root_states[env_ids, 7:10] = 0.2*torch_rand_float(-1.0, 1.0, (num_resets, 3), self.device)
         self.root_states[env_ids, 7:10] = 0
